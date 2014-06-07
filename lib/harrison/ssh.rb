@@ -9,13 +9,15 @@ module Harrison
 
     # Helper to catch non-zero exit status and report errors.
     def exec(command)
+      puts "INFO: (sshexec #{@conn.host}): #{command}" if Harrison::DEBUG
+
       stdout_data = ""
       stderr_data = ""
       exit_code = nil
 
       @conn.open_channel do |channel|
         channel.exec(command) do |ch, success|
-          abort "FAILED: couldn't execute command (ssh.channel.exec)" unless success
+          warn "Couldn't execute command (ssh.channel.exec) on remote host: #{command}" unless success
 
           channel.on_data do |ch,data|
             stdout_data += data
@@ -33,7 +35,9 @@ module Harrison
 
       @conn.loop
 
-      (exit_code == 0) ? stdout_data : stderr_data
+      warn "#{stderr_data}" unless exit_code == 0
+
+      (exit_code == 0) ? stdout_data : nil
     end
 
     def close

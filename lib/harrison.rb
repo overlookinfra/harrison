@@ -1,25 +1,38 @@
+require "trollop"
 require "harrison/version"
 require "harrison/ssh"
+require "harrison/base"
 require "harrison/package"
 require "harrison/deploy"
 
 module Harrison
 
-  def self.invoke(opts={})
+  def self.invoke(args)
+    @@args = args.freeze
+
+    abort("No command given.") if @@args.empty?
+
     hf = find_harrisonfile
     abort("Error: Could not find a Harrisonfile in this directory or any ancestor.") if hf.nil?
 
-    eval_script(hf, opts)
+    eval_script(hf)
+
+    runner = case @@args[0].downcase
+      when 'package' then @@packager
+      when 'deploy' then @@deployer
+    end
+
+    runner.run
   end
 
   def self.package(opts={})
-    packager = Harrison::Package.new(opts)
-    yield packager
-    packager.ssh.close
+    @@packager = Harrison::Package.new(@@args.dup, opts)
+    yield @@packager
   end
 
   def self.deploy(opts={})
-    yield Harrison::Deploy.new(opts)
+    @@deployer = Harrison::Deploy.new(@@args.dup, opts)
+    yield @@deployer
   end
 
 
@@ -36,7 +49,7 @@ module Harrison
     end
   end
 
-  def self.eval_script(filename, opts={})
+  def self.eval_script(filename)
     proc = Proc.new {}
     eval(File.read(filename), proc.binding, filename)
   end
