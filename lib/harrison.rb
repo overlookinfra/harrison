@@ -1,6 +1,7 @@
 require "trollop"
 require "harrison/version"
 require "harrison/ssh"
+require "harrison/config"
 require "harrison/base"
 require "harrison/package"
 require "harrison/deploy"
@@ -23,6 +24,15 @@ module Harrison
     end
 
     runner.run
+  end
+
+  def self.config(opts={})
+    if block_given?
+      @@config ||= Harrison::Config.new(opts)
+      yield @@config
+    else
+      @@config
+    end
   end
 
   def self.package(opts={})

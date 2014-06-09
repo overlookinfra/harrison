@@ -1,12 +1,10 @@
 module Harrison
   class Package < Base
     def initialize(args, opts={})
-      self.class.option_helper(:project)
-      self.class.option_helper(:git_src)
       self.class.option_helper(:commit)
       self.class.option_helper(:purge)
-      self.class.option_helper(:exclude)
       self.class.option_helper(:pkg_dir)
+      self.class.option_helper(:exclude)
 
       arg_opts = [
         [ :commit, "Specific commit to be packaged. Accepts anything that `git rev-parse` understands.", :type => :string, :default => "HEAD" ],

@@ -36,6 +36,15 @@ module Harrison
       end
     end
 
+    # Find config from Harrison.config if it's not on this class.
+    def method_missing(meth, *args, &block)
+      if Harrison.config.respond_to?(meth)
+        Harrison.config.send(meth)
+      else
+        super
+      end
+    end
+
     def exec(cmd)
       result = `#{cmd}`
       abort("ERROR: Unable to execute local command: \"#{cmd}\"") if !$?.success? || result.nil?
