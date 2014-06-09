@@ -21,32 +21,44 @@ Or install it yourself as:
 Example Harrisonfile:
 
 ```ruby
-Harrison.package do |h|
-  # Config
+# This is an example Harrisonfile used for development/testing.
+
+# Project-wide Config
+Harrison.config do |h|
   h.project = 'harrison'
-  h.host = '10.0.0.5'
+  h.git_src = "git@github.com:puppetlabs/harrison.git"
+end
+
+Harrison.package do |h|
+  # Where to build package.
+  h.host = '10.16.18.207'
   h.user = 'jesse'
 
+  # Things we don't want to package.
+  h.exclude = %w(.git config coverage examples log module_files pkg tmp spec)
+
+  # Define the build process here.
   h.run do |h|
-    # Actual packaging process.
-
-    # Find some things from git.
-    h.git_src = h.exec("git config --get remote.origin.url")
-    h.commit = h.exec("git rev-parse --short #{h.commit} 2>/dev/null")
-
-    # Things we don't want to package.
-    h.exclude = %w(.git config coverage examples log module_files pkg tmp spec)
-
-    # Fetch/clone git repo on remote host.
-    h.remote_exec("if [ -d cached ] ; then cd cached && git fetch origin -p ; else git clone #{h.git_src} cached ; fi")
-
-    # Check out target commit.
-    h.remote_exec("cd cached && git reset --hard #{h.commit}")
+    # Bundle Install
+    h.remote_exec("cd #{h.commit} && bash -l -c \"bundle install --path=vendor --without=\\\"development packaging test doc\\\"\"")
   end
 end
 
 Harrison.deploy do |h|
-  # Some other stuff.
+  h.hosts = [ '10.16.18.207' ]
+  h.user = 'jesse'
+  h.base_dir = '/opt'
+
+  # Run block will be invoked once for each host after new code is in place.
+  h.run do |h|
+    # You can interrogate h.host to see what host you are currently running on.
+    if h.host =~ /util/
+      # Do something on the util box.
+    else
+      puts "Reloading Unicorn on #{h.host}..."
+      h.remote_exec("sudo -- /etc/init.d/unicorn_#{h.project} reload")
+    end
+  end
 end
 ```
 
