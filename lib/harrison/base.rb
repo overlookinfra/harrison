@@ -38,13 +38,13 @@ module Harrison
 
     def exec(cmd)
       result = `#{cmd}`
-      abort("Error: Unable to execute local command: \"#{cmd}\"") if !$?.success? || result.nil?
+      abort("ERROR: Unable to execute local command: \"#{cmd}\"") if !$?.success? || result.nil?
       result.strip
     end
 
     def remote_exec(cmd)
       result = ssh.exec(cmd)
-      abort("Error: Unable to execute remote command: \"#{cmd}\"") if result.nil?
+      abort("ERROR: Unable to execute remote command: \"#{cmd}\"") if result.nil?
       result.strip
     end
 
@@ -55,9 +55,11 @@ module Harrison
       else
         # Otherwise, invoke the previously stored block with self.
         @run_block.call(self)
-
-        close
       end
+    end
+
+    def download(remote_path, local_path)
+      @ssh.download(remote_path, local_path)
     end
 
     def close
