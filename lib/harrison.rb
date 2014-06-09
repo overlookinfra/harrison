@@ -21,8 +21,11 @@ module Harrison
     runner = case @@args[0].downcase
       when 'package' then @@packager
       when 'deploy' then @@deployer
+      else
+        abort("ERROR: Unrecognized command \"#{@@args[0]}\".")
     end
 
+    runner.parse(@@args.dup)
     runner.run
   end
 

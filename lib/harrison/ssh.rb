@@ -9,7 +9,7 @@ module Harrison
 
     # Helper to catch non-zero exit status and report errors.
     def exec(command)
-      puts "INFO (sshexec #{@conn.host}): #{command}" if Harrison::DEBUG
+      puts "INFO (ssh-exec #{@conn.host}): #{command}" if Harrison::DEBUG
 
       stdout_data = ""
       stderr_data = ""
@@ -36,19 +36,21 @@ module Harrison
       @conn.loop
 
       if Harrison::DEBUG || exit_code != 0
-        warn "STDERR (sshexec #{@conn.host}): #{stderr_data.strip}" unless stderr_data.empty?
-        warn "STDOUT (sshexec #{@conn.host}): #{stdout_data.strip}" unless stdout_data.empty?
+        warn "STDERR (ssh-exec #{@conn.host}): #{stderr_data.strip}" unless stderr_data.empty?
+        warn "STDOUT (ssh-exec #{@conn.host}): #{stdout_data.strip}" unless stdout_data.empty?
       end
 
       (exit_code == 0) ? stdout_data : nil
     end
 
     def download(remote_path, local_path)
+      puts "INFO (scp-down #{@conn.host}): #{local_path} <<< #{remote_path}" if Harrison::DEBUG
       @conn.scp.download!(remote_path, local_path)
     end
 
     def upload(local_path, remote_path)
-      # TODO
+      puts "INFO (scp-up #{@conn.host}): #{local_path} >>> #{remote_path}" if Harrison::DEBUG
+      @conn.scp.upload!(local_path, remote_path)
     end
 
     def close

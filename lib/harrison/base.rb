@@ -6,24 +6,15 @@ module Harrison
     def initialize(args, arg_opts=[], opts={})
       @options = opts
 
-      self.class.option_helper(:host)
       self.class.option_helper(:user)
-      self.class.option_helper(:remote_dir)
 
       arg_opts << [ :debug, "Output debug messages.", :type => :boolean, :default => false ]
-      arg_opts << [ :remote_dir, "Remote working folder.", :type => :string, :default => "~/.harrison" ]
 
-      opt_parser = Trollop::Parser.new
+      @opt_parser = Trollop::Parser.new
 
       arg_opts.each do |arg_opt|
-        opt_parser.opt(*arg_opt)
+        @opt_parser.opt(*arg_opt)
       end
-
-      opts.merge!(Trollop::with_standard_exception_handling(opt_parser) do
-        opt_parser.parse(args)
-      end)
-
-      Harrison.const_set("DEBUG", opts[:debug])
     end
 
     def self.option_helper(option)
@@ -57,6 +48,14 @@ module Harrison
       result.strip
     end
 
+    def parse(args)
+      @options.merge!(Trollop::with_standard_exception_handling(@opt_parser) do
+        @opt_parser.parse(args)
+      end)
+
+      Harrison.const_set("DEBUG", @options[:debug])
+    end
+
     def run(&block)
       if block_given?
         # If called with a block, convert it to a proc and store.
@@ -68,11 +67,15 @@ module Harrison
     end
 
     def download(remote_path, local_path)
-      @ssh.download(remote_path, local_path)
+      ssh.download(remote_path, local_path)
+    end
+
+    def upload(local_path, remote_path)
+      ssh.upload(local_path, remote_path)
     end
 
     def close
-      @ssh.close if @ssh
+      ssh.close if @ssh
     end
 
     def remote_project_dir
