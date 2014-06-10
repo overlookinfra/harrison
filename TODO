@@ -1,1 +1,9 @@
-- When deploying via a proxy, cache artifact on proxy before deploying to hosts.
+Definitely:
+
+[ ] TESTING!
+[ ] When deploying via a proxy, cache artifact on proxy before deploying to hosts.
+
+
+Maybe:
+
+[ ] Allow more elaborate hosts config, e.g.: h.hosts = [ { host: '10.16.18.207', tags: %w(util migrate) } ]
