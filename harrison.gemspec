@@ -18,11 +18,15 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
+  spec.required_ruby_version = '>= 1.9.3'
+
   spec.add_runtime_dependency "trollop"
   spec.add_runtime_dependency "net-ssh"
   spec.add_runtime_dependency "net-scp"
 
   spec.add_development_dependency "bundler", "~> 1.6"
   spec.add_development_dependency "rake"
-  spec.add_development_dependency "debugger"
+  spec.add_development_dependency "rspec"
+  spec.add_development_dependency "debugger" if RUBY_VERSION < "2.0.0"
+  spec.add_development_dependency "byebug" if RUBY_VERSION >= "2.0.0"
 end
