@@ -8,6 +8,7 @@ module Harrison
     def initialize(args, opts={})
       self.class.option_helper(:hosts)
       self.class.option_helper(:base_dir)
+      self.class.option_helper(:deploy_via)
 
       arg_opts = [
         [ :hosts, "List of remote hosts to deploy to. Can also be specified in Harrisonfile.", :type => :strings ],
@@ -78,7 +79,7 @@ module Harrison
         @_conns[host].close if @_conns && @_conns[host]
       elsif @_conns
         @_conns.keys.each do |host|
-          @_conns[host].close
+          @_conns[host].close unless @_conns[host].closed?
         end
       end
     end
@@ -87,7 +88,7 @@ module Harrison
 
     def ssh
       @_conns ||= {}
-      @_conns[self.host] ||= Harrison::SSH.new(host: self.host, user: @options[:user])
+      @_conns[self.host] ||= Harrison::SSH.new(host: self.host, user: @options[:user], proxy: self.deploy_via)
     end
 
     def remote_project_dir

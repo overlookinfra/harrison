@@ -26,7 +26,12 @@ module Harrison
     end
 
     runner.parse(@@args.dup)
-    runner.run
+
+    begin
+      runner.run
+    ensure
+      runner.close
+    end
   end
 
   def self.config(opts={})

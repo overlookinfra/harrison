@@ -61,8 +61,6 @@ module Harrison
       end
 
       puts "Sucessfully packaged #{commit} to #{pkg_dir}/#{commit}.tar.gz"
-
-      close
     end
 
     protected
