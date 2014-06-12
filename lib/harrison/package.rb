@@ -65,6 +65,10 @@ module Harrison
 
     protected
 
+    def remote_project_dir
+      "#{remote_dir}/#{project}"
+    end
+
     def resolve_commit!
       self.commit = exec("git rev-parse --short #{self.commit} 2>/dev/null")
     end

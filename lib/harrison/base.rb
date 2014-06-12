@@ -81,10 +81,6 @@ module Harrison
       ssh.close if @ssh
     end
 
-    def remote_project_dir
-      "#{remote_dir}/#{project}"
-    end
-
     protected
 
     def ssh
