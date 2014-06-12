@@ -35,8 +35,9 @@ module Harrison
   end
 
   def self.config(opts={})
+    @@config ||= Harrison::Config.new(opts)
+
     if block_given?
-      @@config ||= Harrison::Config.new(opts)
       yield @@config
     else
       @@config
