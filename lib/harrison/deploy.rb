@@ -5,16 +5,18 @@ module Harrison
     attr_accessor :release_dir
     attr_accessor :deploy_link
 
-    def initialize(args, opts={})
+    def initialize(opts={})
+      # Config helpers for Harrisonfile.
       self.class.option_helper(:hosts)
       self.class.option_helper(:base_dir)
       self.class.option_helper(:deploy_via)
 
+      # Command line opts for this action. Will be merged with common opts.
       arg_opts = [
         [ :hosts, "List of remote hosts to deploy to. Can also be specified in Harrisonfile.", :type => :strings ],
       ]
 
-      super(args, arg_opts, opts)
+      super(arg_opts, opts)
     end
 
     def parse(args)

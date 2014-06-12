@@ -3,18 +3,14 @@ module Harrison
     attr_reader :ssh
     attr_accessor :options
 
-    def initialize(args, arg_opts=[], opts={})
-      @options = opts
-
+    def initialize(arg_opts=[], opts={})
+      # Config helpers for Harrisonfile.
       self.class.option_helper(:user)
 
-      arg_opts << [ :debug, "Output debug messages.", :type => :boolean, :default => false ]
+      @arg_opts = arg_opts
+      @arg_opts << [ :debug, "Output debug messages.", :type => :boolean, :default => false ]
 
-      @opt_parser = Trollop::Parser.new
-
-      arg_opts.each do |arg_opt|
-        @opt_parser.opt(*arg_opt)
-      end
+      @options = opts
     end
 
     def self.option_helper(option)
@@ -49,10 +45,17 @@ module Harrison
     end
 
     def parse(args)
-      @options.merge!(Trollop::with_standard_exception_handling(@opt_parser) do
-        @opt_parser.parse(args)
+      opt_parser = Trollop::Parser.new
+
+      @arg_opts.each do |arg_opt|
+        opt_parser.opt(*arg_opt)
+      end
+
+      @options.merge!(Trollop::with_standard_exception_handling(opt_parser) do
+        opt_parser.parse(args)
       end)
 
+      Harrison.send(:remove_const, "DEBUG") if Harrison.const_defined?("DEBUG")
       Harrison.const_set("DEBUG", @options[:debug])
     end
 

@@ -1,15 +1,15 @@
 module Harrison
   class Package < Base
-    def initialize(args, opts={})
+    def initialize(opts={})
+      # Config helpers for Harrisonfile.
       self.class.option_helper(:host)
       self.class.option_helper(:commit)
       self.class.option_helper(:purge)
       self.class.option_helper(:pkg_dir)
       self.class.option_helper(:remote_dir)
-
       self.class.option_helper(:exclude)
 
-      # TODO: defer parsing these until invoked
+      # Command line opts for this action. Will be merged with common opts.
       arg_opts = [
         [ :commit, "Specific commit to be packaged. Accepts anything that `git rev-parse` understands.", :type => :string, :default => "HEAD" ],
         [ :purge, "Remove all previously packaged commits and working copies from the build host when finished.", :type => :boolean, :default => false ],
@@ -17,7 +17,7 @@ module Harrison
         [ :remote_dir, "Remote working folder.", :type => :string, :default => "~/.harrison" ],
       ]
 
-      super(args, arg_opts, opts)
+      super(arg_opts, opts)
     end
 
     def remote_exec(cmd)
