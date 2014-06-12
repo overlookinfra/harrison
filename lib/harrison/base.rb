@@ -65,7 +65,7 @@ module Harrison
         @run_block = block
       else
         # Otherwise, invoke the previously stored block with self.
-        @run_block.call(self)
+        @run_block && @run_block.call(self)
       end
     end
 
