@@ -45,12 +45,12 @@ module Harrison
   end
 
   def self.package(opts={})
-    @@packager = Harrison::Package.new(@@args.dup, opts)
+    @@packager = Harrison::Package.new(opts)
     yield @@packager
   end
 
   def self.deploy(opts={})
-    @@deployer = Harrison::Deploy.new(@@args.dup, opts)
+    @@deployer = Harrison::Deploy.new(opts)
     yield @@deployer
   end
 
