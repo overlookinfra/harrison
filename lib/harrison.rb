@@ -21,6 +21,7 @@ module Harrison
     runner = case @@args[0].downcase
       when 'package' then @@packager
       when 'deploy' then @@deployer
+      when '--help' then Harrison::Base.new.parse(@@args.dup) and return
       else
         abort("ERROR: Unrecognized command \"#{@@args[0]}\".")
     end
