@@ -1,6 +1,12 @@
 require 'spec_helper'
 
 describe Harrison do
+  before(:each) do
+    [ :@@args, :@@packager, :@@deployer, :@@config ].each do |class_var|
+      Harrison.class_variable_set(class_var, nil)
+    end
+  end
+
   describe '.invoke' do
     it 'should exit when no args are passed' do
       output = capture(:stderr) do
@@ -19,7 +25,7 @@ describe Harrison do
     end
 
     it 'should look for a Harrisonfile' do
-      expect(Harrison).to receive(:find_harrisonfile).and_return(harrisonfile_fixture_path(:valid))
+      expect(Harrison).to receive(:find_harrisonfile).and_return(harrisonfile_fixture_path)
 
       output = capture(:stderr) do
         lambda { Harrison.invoke(['test']) }.should exit_with_code(1)
@@ -39,8 +45,8 @@ describe Harrison do
     end
 
     it 'should eval Harrisonfile' do
-      expect(Harrison).to receive(:find_harrisonfile).and_return(harrisonfile_fixture_path(:valid))
-      expect(Harrison).to receive(:eval_script).with(harrisonfile_fixture_path(:valid))
+      expect(Harrison).to receive(:find_harrisonfile).and_return(harrisonfile_fixture_path)
+      expect(Harrison).to receive(:eval_script).with(harrisonfile_fixture_path)
 
       output = capture(:stderr) do
         lambda { Harrison.invoke(['test']) }.should exit_with_code(1)
@@ -51,24 +57,96 @@ describe Harrison do
   end
 
   describe '.config' do
-    pending
+    it 'should return a new Harrison::Config' do
+      mock_config = double(:config)
+      expect(Harrison::Config).to receive(:new).and_return(mock_config)
+
+      Harrison.config.should == mock_config
+    end
+
+    it 'should return existing Harrison::Config if defined' do
+      mock_config = double(:config)
+      Harrison.class_variable_set(:@@config, mock_config)
+      expect(Harrison::Config).to_not receive(:new)
+
+      Harrison.config.should == mock_config
+    end
+
+    it 'should yield config if given a block' do
+      mock_config = double(:config)
+      Harrison.class_variable_set(:@@config, mock_config)
+
+      expect { |b| Harrison.config(&b) }.to yield_with_args(mock_config)
+    end
   end
 
   describe '.package' do
-    pending
+    it 'should yield a new Harrison::Package' do
+      mock_package = double(:package)
+      expect(Harrison::Package).to receive(:new).and_return(mock_package)
+
+      expect { |b| Harrison.package(&b) }.to yield_with_args(mock_package)
+    end
+
+    it 'should yield existing Harrison::Package if defined' do
+      mock_package = double(:package)
+      Harrison.class_variable_set(:@@packager, mock_package)
+      expect(Harrison::Package).to_not receive(:new)
+
+      expect { |b| Harrison.package(&b) }.to yield_with_args(mock_package)
+    end
   end
 
   describe '.deploy' do
-    pending
+    it 'should yield a new Harrison::Deploy' do
+      mock_deploy = double(:deploy)
+      expect(Harrison::Deploy).to receive(:new).and_return(mock_deploy)
+
+      expect { |b| Harrison.deploy(&b) }.to yield_with_args(mock_deploy)
+    end
+
+    it 'should yield existing Harrison::Package if defined' do
+      mock_deploy = double(:deploy)
+      Harrison.class_variable_set(:@@deployer, mock_deploy)
+      expect(Harrison::Deploy).to_not receive(:new)
+
+      expect { |b| Harrison.deploy(&b) }.to yield_with_args(mock_deploy)
+    end
   end
 
   context 'private methods' do
     describe '.find_harrisonfile' do
-      pending
+      it 'should find a Harrisonfile if it exists in pwd' do
+        expect(Dir).to receive(:pwd).and_return(fixture_path)
+
+        Harrison.send(:find_harrisonfile).should == harrisonfile_fixture_path
+      end
+
+      it 'should find a Harrisonfile if it exists in parent of pwd' do
+        expect(Dir).to receive(:pwd).and_return(fixture_path + '/nested')
+
+        Harrison.send(:find_harrisonfile).should == harrisonfile_fixture_path
+      end
+
+      it 'should return nil if there is no Harrisonfile in tree' do
+        expect(Dir).to receive(:pwd).and_return(File.dirname(__FILE__))
+
+        # Short circuit upward directory traversal.
+        allow(File).to receive(:expand_path).and_call_original
+        allow(File).to receive(:expand_path).with("..", File.dirname(__FILE__)).and_return(File.dirname(__FILE__))
+
+        Harrison.send(:find_harrisonfile).should be_nil
+      end
     end
 
     describe '.eval_script' do
-      pending
+      it 'should eval given script' do
+        output = capture(:stdout) do
+          Harrison.send(:eval_script, fixture_path + '/eval_script.rb')
+        end
+
+        output.should == "this file was eval-led\n"
+      end
     end
   end
 end

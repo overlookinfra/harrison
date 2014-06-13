@@ -56,6 +56,14 @@ def capture(io_name, &block)
   fake.string.downcase
 end
 
-def harrisonfile_fixture_path(type=:valid)
-  File.dirname(__FILE__) + "/fixtures/Harrisonfile.#{type}"
+def fixture_path
+  File.dirname(__FILE__) + "/fixtures"
+end
+
+def harrisonfile_fixture_path(type=nil)
+  if type
+    fixture_path + "/Harrisonfile.#{type}"
+  else
+    fixture_path + "/Harrisonfile"
+  end
 end
