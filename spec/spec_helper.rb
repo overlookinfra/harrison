@@ -16,13 +16,46 @@ RSpec.configure do |config|
   config.order = 'random'
 end
 
-def capture_stderr(&block)
-  original_stderr = $stderr
-  $stderr = fake = StringIO.new
+RSpec::Matchers.define :exit_with_code do |exp_code|
+  actual = nil
+
+  match do |block|
+    begin
+      block.call
+    rescue SystemExit => e
+      actual = e.status
+    end
+    actual and actual == exp_code
+  end
+
+  failure_message_for_should do |block|
+    "expected block to call exit(#{exp_code}) but exit" +
+      (actual.nil? ? " not called" : "(#{actual}) was called")
+  end
+
+  failure_message_for_should_not do |block|
+    "expected block not to call exit(#{exp_code})"
+  end
+
+  description do
+    "expect block to call exit(#{exp_code})"
+  end
+end
+
+def capture(io_name, &block)
+  original = eval("$#{io_name}")
+  fake = StringIO.new
+  eval("$#{io_name} = fake")
+
   begin
     yield
   ensure
-    $stderr = original_stderr
+    eval("$#{io_name} = original")
   end
-  fake.string
+
+  fake.string.downcase
+end
+
+def harrisonfile_fixture_path(type=:valid)
+  File.dirname(__FILE__) + "/fixtures/Harrisonfile.#{type}"
 end

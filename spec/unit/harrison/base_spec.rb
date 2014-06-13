@@ -44,11 +44,11 @@ describe Harrison::Base do
       end
 
       it 'should complain if command returns non-zero' do
-        output = capture_stderr do
-          lambda { instance.exec('cat noexist 2>/dev/null') }.should raise_error SystemExit
+        output = capture(:stderr) do
+          lambda { instance.exec('cat noexist 2>/dev/null') }.should exit_with_code(1)
         end
 
-        output.should =~ /Unable to execute local command/
+        output.should include('unable', 'execute', 'local', 'command')
       end
     end
 
@@ -67,11 +67,11 @@ describe Harrison::Base do
       it 'should complain if command returns nil' do
         expect(@mock_ssh).to receive(:exec).and_return(nil)
 
-        output = capture_stderr do
-          lambda { instance.remote_exec('remote exec fail') }.should raise_error SystemExit
+        output = capture(:stderr) do
+          lambda { instance.remote_exec('remote exec fail') }.should exit_with_code(1)
         end
 
-        output.should =~ /Unable to execute remote command/
+        output.should include('unable', 'execute', 'remote', 'command')
       end
     end
 

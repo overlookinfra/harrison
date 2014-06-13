@@ -11,23 +11,30 @@ module Harrison
   def self.invoke(args)
     @@args = args.freeze
 
-    abort("No command given.") if @@args.empty?
+    abort("No command given. Run with --help for valid commands and options.") if @@args.empty?
 
+    # Catch root level --help
+    Harrison::Base.new.parse(@@args.dup) and exit(0) if @@args[0] == '--help'
+
+    # Find Harrisonfile.
     hf = find_harrisonfile
     abort("Error: Could not find a Harrisonfile in this directory or any ancestor.") if hf.nil?
 
+    # Eval the Harrisonfile.
     eval_script(hf)
 
+    # Find the class to handle command.
     runner = case @@args[0].downcase
       when 'package' then @@packager
       when 'deploy' then @@deployer
-      when '--help' then Harrison::Base.new.parse(@@args.dup) and return
       else
         abort("ERROR: Unrecognized command \"#{@@args[0]}\".")
     end
 
+    # Parse options with command class.
     runner.parse(@@args.dup)
 
+    # Invoke command and cleanup afterwards.
     begin
       runner.run
     ensure

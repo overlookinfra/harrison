@@ -1,0 +1,34 @@
+# This is an valid fixture Harrisonfile used for testing.
+
+# Project-wide Config
+Harrison.config do |h|
+  h.project = 'harrison'
+  h.git_src = "git@github.com:puppetlabs/harrison.git"
+end
+
+Harrison.package do |h|
+  # Where to build package.
+  h.host = 'localhost'
+  h.user = 'test'
+
+  # Things we don't want to package.
+  h.exclude = %w(.git config coverage examples log module_files pkg tmp spec)
+
+  # Define the build process here.
+  h.run do |h|
+    h.remote_exec("echo \"test-package\"")
+  end
+end
+
+Harrison.deploy do |h|
+  # Hosts to deploy to.
+  h.hosts = [ 'localhost' ]
+
+  h.user = 'test'
+  h.base_dir = '/tmp'
+
+  # Run block will be invoked once for each host after new code is in place.
+  h.run do |h|
+    h.remote_exec("echo \"test-deploy\"")
+  end
+end
