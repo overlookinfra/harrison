@@ -26,7 +26,7 @@ module Harrison
     # Find config from Harrison.config if it's not on this class.
     def method_missing(meth, *args, &block)
       if Harrison.config.respond_to?(meth)
-        Harrison.config.send(meth)
+        Harrison.config.send(meth, *args, &block)
       else
         super
       end
