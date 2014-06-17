@@ -194,20 +194,27 @@ describe Harrison::Base do
     describe '#ensure_remote_dir' do
       before(:each) do
         @mock_ssh = double(:ssh)
-        expect(instance).to receive(:ssh).and_return(@mock_ssh)
+        allow(instance).to receive(:ssh).and_return(@mock_ssh)
       end
 
       it 'should try to create a directory remotely' do
         expect(@mock_ssh).to receive(:exec).with(/remote_dir/).and_return(true)
 
-        instance.send(:ensure_remote_dir, 'remote_dir').should == true
+        instance.send(:ensure_remote_dir, 'testhost', 'remote_dir').should == true
       end
 
-      it 'should only try to create a directory once' do
+      it 'should try to create a directory once for each distinct host' do
+        expect(@mock_ssh).to receive(:exec).with(/remote_dir/).twice.and_return(true)
+
+        instance.send(:ensure_remote_dir, 'test-host', 'remote_dir').should == true
+        instance.send(:ensure_remote_dir, 'another-host', 'remote_dir').should == true
+      end
+
+      it 'should only try to create a directory once for the same host' do
         expect(@mock_ssh).to receive(:exec).with(/remote_dir/).once.and_return(true)
 
-        instance.send(:ensure_remote_dir, 'remote_dir').should == true
-        instance.send(:ensure_remote_dir, 'remote_dir').should == true
+        instance.send(:ensure_remote_dir, 'test-host', 'remote_dir').should == true
+        instance.send(:ensure_remote_dir, 'test-host', 'remote_dir').should == true
       end
     end
   end

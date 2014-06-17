@@ -21,7 +21,7 @@ module Harrison
     end
 
     def remote_exec(cmd)
-      ensure_remote_dir("#{remote_project_dir}/package")
+      ensure_remote_dir(self.host, "#{remote_project_dir}/package")
 
       super("cd #{remote_project_dir}/package && #{cmd}")
     end
