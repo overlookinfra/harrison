@@ -41,7 +41,7 @@ module Harrison
       remote_exec("if [ -d cached ] ; then cd cached && git fetch origin -p ; else git clone #{git_src} cached ; fi")
 
       # Check out target commit.
-      remote_exec("cd cached && git reset --hard #{commit}")
+      remote_exec("cd cached && git reset --hard #{commit} && git clean -f -d")
 
       # Make a build folder of the target commit.
       remote_exec("rm -rf #{commit} && cp -a cached #{commit}")
@@ -74,7 +74,7 @@ module Harrison
     end
 
     def excludes_for_tar
-      return '' if exclude.empty?
+      return '' if !exclude || exclude.empty?
 
       "--exclude \"#{exclude.join('" --exclude "')}\""
     end
