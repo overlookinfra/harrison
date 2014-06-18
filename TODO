@@ -1,10 +1,15 @@
-Definitely:
+In Progress:
+------------
+[ ] Unit Testing
 
-[ ] TESTING!
+Definitely:
+-----------
+[ ] Rollback action.
+[ ] Error handling (with automatic rollback)
 [ ] Further de-compose actions so that specific parts can be easily overridden.
 [ ] When deploying via a proxy, cache artifact on proxy before deploying to hosts.
 [ ] Banner text in --help output.
 
 Maybe:
-
+------
 [ ] Allow more elaborate hosts config, e.g.: h.hosts = [ { host: '10.16.18.207', tags: %w(util migrate) } ]
