@@ -11,7 +11,7 @@ describe Harrison::Base do
     end
 
     it 'should add debug to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include('Output debug messages.')
+      instance.instance_variable_get('@arg_opts').to_s.should include(':debug')
     end
 
     it 'should persist options' do

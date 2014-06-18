@@ -23,11 +23,11 @@ module Harrison
 
     def parse(args)
       # Preserve Harrisonfile hosts setting in case it's not passed.
-      hf_hosts = self.hosts.dup
+      hf_hosts = self.hosts.dup if self.hosts
 
       super
 
-      self.hosts ||= hf_hosts
+      self.hosts ||= hf_hosts || abort("ERROR: You must specify one or more hosts to deploy to, either in your Harrisonfile or via --hosts.")
       self.artifact = args[1] || abort("ERROR: You must specify the artifact to be deployed as an argument to this command.")
       self.base_dir ||= '/opt' # Default deployment location.
     end
@@ -40,7 +40,6 @@ module Harrison
       return super if block_given?
 
       puts "Deploying #{artifact} for \"#{project}\" onto #{hosts.size} hosts..."
-
 
       self.release_dir = "#{remote_project_dir}/releases/" + File.basename(artifact, '.tar.gz')
       self.deploy_link = "#{remote_project_dir}/deploys/" + Time.new.utc.strftime('%Y-%m-%d_%H%M%S')
