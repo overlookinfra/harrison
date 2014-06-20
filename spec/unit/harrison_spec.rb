@@ -1,6 +1,12 @@
 require 'spec_helper'
 
 describe Harrison do
+  before(:all) do
+    [ :@@args, :@@packager, :@@deployer, :@@config ].each do |class_var|
+      Harrison.class_variable_set(class_var, nil)
+    end
+  end
+
   after(:each) do
     [ :@@args, :@@packager, :@@deployer, :@@config ].each do |class_var|
       Harrison.class_variable_set(class_var, nil)
