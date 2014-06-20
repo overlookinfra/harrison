@@ -5,7 +5,7 @@ In Progress:
 Definitely:
 -----------
 [ ] Rollback action.
-[ ] Error handling (with automatic rollback)
+[ ] Error handling (with automatic rollback/undo)
 [ ] Further de-compose actions so that specific parts can be easily overridden.
 [ ] When deploying via a proxy, cache artifact on proxy before deploying to hosts.
 [ ] Banner text in --help output.
@@ -13,3 +13,5 @@ Definitely:
 Maybe:
 ------
 [ ] Allow more elaborate hosts config, e.g.: h.hosts = [ { host: '10.16.18.207', tags: %w(util migrate) } ]
+[ ] Some kind of --dry-run option.
+[ ] Allow deploy_via to include alternate user/connection options.
