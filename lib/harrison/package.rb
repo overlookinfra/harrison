@@ -51,16 +51,16 @@ module Harrison
       super
 
       # Package build folder into tgz.
-      remote_exec("rm -f #{commit}.tar.gz && cd #{commit} && tar #{excludes_for_tar} -czf ../#{commit}.tar.gz .")
+      remote_exec("rm -f #{artifact_name(commit)}.tar.gz && cd #{commit} && tar #{excludes_for_tar} -czf ../#{artifact_name(commit)}.tar.gz .")
 
       # Download (Expand remote path since Net::SCP doesn't expand ~)
-      download(remote_exec("readlink -m #{commit}.tar.gz"), "#{pkg_dir}/#{commit}.tar.gz")
+      download(remote_exec("readlink -m #{artifact_name(commit)}.tar.gz"), "#{pkg_dir}/#{artifact_name(commit)}.tar.gz")
 
       if purge
         remote_exec("cd .. && rm -rf package")
       end
 
-      puts "Sucessfully packaged #{commit} to #{pkg_dir}/#{commit}.tar.gz"
+      puts "Sucessfully packaged #{commit} to #{pkg_dir}/#{artifact_name(commit)}.tar.gz"
     end
 
     protected
@@ -77,6 +77,11 @@ module Harrison
       return '' if !exclude || exclude.empty?
 
       "--exclude \"#{exclude.join('" --exclude "')}\""
+    end
+
+    def artifact_name(commit)
+      @_timestamp ||= Time.new.utc.strftime('%Y%m%d%H%M%S')
+      "#{@_timestamp}-#{commit}"
     end
   end
 end

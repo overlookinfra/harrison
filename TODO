@@ -15,3 +15,5 @@ Maybe:
 [ ] Allow more elaborate hosts config, e.g.: h.hosts = [ { host: '10.16.18.207', tags: %w(util migrate) } ]
 [ ] Some kind of --dry-run option.
 [ ] Allow deploy_via to include alternate user/connection options.
+[ ] Rename "releases" => "builds" (and "deploys" => "releases"?)
+[ ] Upload artifact to all hosts before the rest of the deployment process begins.
