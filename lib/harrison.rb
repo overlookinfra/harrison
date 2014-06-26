@@ -18,27 +18,20 @@ module Harrison
 
     # Find Harrisonfile.
     hf = find_harrisonfile
-    abort("Error: Could not find a Harrisonfile in this directory or any ancestor.") if hf.nil?
+    abort("ERROR: Could not find a Harrisonfile in this directory or any ancestor.") if hf.nil?
+
+    # Find the class to handle command.
+    @@runner = find_runner(@@args[0])
+    abort("ERROR: Unrecognized command \"#{@@args[0]}\".") unless @@runner
 
     # Eval the Harrisonfile.
     eval_script(hf)
 
-    # Find the class to handle command.
-    runner = case @@args[0].downcase
-      when 'package' then @@packager
-      when 'deploy' then @@deployer
-      else
-        abort("ERROR: Unrecognized command \"#{@@args[0]}\".")
-    end
-
-    # Parse options with command class.
-    runner.parse(@@args.dup)
-
     # Invoke command and cleanup afterwards.
     begin
-      runner.run
+      @@runner.call.run
     ensure
-      runner.close
+      @@runner.call.close
     end
   end
 
@@ -54,11 +47,19 @@ module Harrison
 
   def self.package(opts={})
     @@packager ||= Harrison::Package.new(opts)
+
+    # Parse options if this is the target command.
+    @@packager.parse(@@args.dup) if @@runner && @@runner.call == @@packager
+
     yield @@packager
   end
 
   def self.deploy(opts={})
     @@deployer ||= Harrison::Deploy.new(opts)
+
+    # Parse options if this is the target command.
+    @@deployer.parse(@@args.dup) if @@runner && @@runner.call == @@deployer
+
     yield @@deployer
   end
 
@@ -79,5 +80,12 @@ module Harrison
   def self.eval_script(filename)
     proc = Proc.new {}
     eval(File.read(filename), proc.binding, filename)
+  end
+
+  def self.find_runner(command)
+    case command.downcase
+      when 'package' then lambda { @@packager if self.class_variable_defined?(:@@packager) }
+      when 'deploy' then lambda { @@deployer if self.class_variable_defined?(:@@deployer) }
+    end
   end
 end

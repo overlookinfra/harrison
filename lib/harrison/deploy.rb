@@ -22,14 +22,13 @@ module Harrison
     end
 
     def parse(args)
-      # Preserve Harrisonfile hosts setting in case it's not passed.
-      hf_hosts = self.hosts.dup if self.hosts
-
       super
 
-      self.hosts ||= hf_hosts || abort("ERROR: You must specify one or more hosts to deploy to, either in your Harrisonfile or via --hosts.")
+      # Preserve argv hosts if it's been passed.
+      @_argv_hosts = self.hosts.dup if self.hosts
+
+      # Make sure they passed an artifact.
       self.artifact = args[1] || abort("ERROR: You must specify the artifact to be deployed as an argument to this command.")
-      self.base_dir ||= '/opt' # Default deployment location.
     end
 
     def remote_exec(cmd)
@@ -38,6 +37,16 @@ module Harrison
 
     def run(&block)
       return super if block_given?
+
+      # Override Harrisonfile hosts if it was passed on argv.
+      self.hosts = @_argv_hosts if @_argv_hosts
+
+      if !self.hosts || self.hosts.empty?
+        abort("ERROR: You must specify one or more hosts to deploy to, either in your Harrisonfile or via --hosts.")
+      end
+
+      # Default base_dir.
+      self.base_dir ||= '/opt'
 
       puts "Deploying #{artifact} for \"#{project}\" onto #{hosts.size} hosts..."
 

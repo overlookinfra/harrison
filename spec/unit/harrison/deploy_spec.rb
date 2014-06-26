@@ -26,28 +26,6 @@ describe Harrison::Deploy do
 
   describe 'instance methods' do
     describe '#parse' do
-      it 'should use hosts from --hosts if passed' do
-        instance.parse(%w(deploy test_artifact.tar.gz --hosts test1 test2 test3))
-
-        instance.options.should include({ hosts: [ 'test1', 'test2', 'test3' ] })
-      end
-
-      it 'should use hosts from Harrisonfile if --hosts not passed' do
-        instance.parse(%w(deploy test_artifact.tar.gz))
-
-        instance.options.should include({ hosts: [ 'hf_host' ] })
-      end
-
-      it 'should require hosts to be set somehow' do
-        instance.hosts = nil
-
-        output = capture(:stderr) do
-          lambda { instance.parse(%w(deploy test_artifact.tar.gz)) }.should exit_with_code(1)
-        end
-
-        output.should include('must', 'specify', 'hosts')
-      end
-
       it 'should require an artifact to be passed in ARGV' do
         output = capture(:stderr) do
           lambda { instance.parse(%w(deploy)) }.should exit_with_code(1)
@@ -60,13 +38,6 @@ describe Harrison::Deploy do
         instance.parse(%w(deploy test_artifact.tar.gz))
 
         instance.options.should include({ base_dir: '/hf_basedir' })
-      end
-
-      it 'should default "base_dir" to "/opt"' do
-        instance.base_dir = nil
-        instance.parse(%w(deploy test_artifact.tar.gz))
-
-        instance.options.should include({ base_dir: '/opt' })
       end
     end
 
@@ -104,7 +75,19 @@ describe Harrison::Deploy do
       context 'when not passed a block' do
         before(:each) do
           @mock_ssh = double(:ssh, exec: '', upload: true, download: true)
-          expect(instance).to receive(:ssh).at_least(:once).and_return(@mock_ssh)
+          allow(instance).to receive(:ssh).and_return(@mock_ssh)
+        end
+
+        it 'should use hosts from --hosts if passed' do
+          pending
+        end
+
+        it 'should use hosts from Harrisonfile if --hosts not passed' do
+          pending
+        end
+
+        it 'should require hosts to be set somehow' do
+          pending
         end
 
         it 'should invoke the previously stored block once for each host' do

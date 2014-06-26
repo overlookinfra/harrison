@@ -29,4 +29,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec"
   spec.add_development_dependency "debugger" if RUBY_VERSION < "2.0.0"
   spec.add_development_dependency "byebug" if RUBY_VERSION >= "2.0.0"
+  spec.add_development_dependency "sourcify"
 end
