@@ -8,13 +8,12 @@ Gem::Specification.new do |spec|
   spec.version       = Harrison::VERSION
   spec.authors       = ["Jesse Scott"]
   spec.email         = ["jesse@puppetlabs.com"]
-  spec.summary       = %q{Write a short summary. Required.}
-  spec.description   = %q{Write a longer description. Optional.}
+  spec.summary       = %q{Simple artifact-based deployment for web applications.}
   spec.homepage      = ""
   spec.license       = "Apache 2.0"
 
   spec.files         = `git ls-files -z`.split("\x0")
-  spec.executables   = [ 'harrison' ]
+  spec.executables   = ["harrison"]
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 

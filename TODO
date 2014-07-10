@@ -1,3 +1,7 @@
+Bugs:
+-----
+[ ] Test that artifact exists before doing anything for deploy task.
+
 In Progress:
 ------------
 [ ] Unit Testing
@@ -9,6 +13,8 @@ Definitely:
 [ ] Further de-compose actions so that specific parts can be easily overridden.
 [ ] When deploying via a proxy, cache artifact on proxy before deploying to hosts.
 [ ] Banner text in --help output.
+[ ] Improve unit testing, try to minimize coupling to implementation details.
+[ ] Include branch name in artifact file name.
 
 Maybe:
 ------
@@ -17,3 +23,4 @@ Maybe:
 [ ] Allow deploy_via to include alternate user/connection options.
 [ ] Rename "releases" => "builds" (and "deploys" => "releases"?)
 [ ] Upload artifact to all hosts before the rest of the deployment process begins.
+[ ] --force option for deploy task to overwrite an existing release
