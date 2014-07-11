@@ -42,18 +42,32 @@ RSpec::Matchers.define :exit_with_code do |exp_code|
   end
 end
 
-def capture(io_name, &block)
-  original = eval("$#{io_name}")
-  fake = StringIO.new
-  eval("$#{io_name} = fake")
+def capture(io_names = [ :stdout, :stderr ], &block)
+  original_ios = {}
+  fake_ios = {}
+
+  io_names = [ io_names ] unless io_names.respond_to?(:each)
+
+  io_names.each do |io_name|
+    original_ios[io_name] = eval("$#{io_name}")
+    fake_ios[io_name] = StringIO.new
+
+    eval("$#{io_name} = fake_ios[io_name]")
+  end
 
   begin
     yield
   ensure
-    eval("$#{io_name} = original")
+    io_names.each do |io_name|
+      eval("$#{io_name} = original_ios[io_name]")
+    end
   end
 
-  fake.string.downcase
+  if io_names.size == 1
+    return fake_ios[io_names.first].string.downcase
+  else
+    return fake_ios.each { |io, output| fake_ios[io] = output.string.downcase }
+  end
 end
 
 def fixture_path
