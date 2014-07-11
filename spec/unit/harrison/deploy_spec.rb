@@ -76,31 +76,49 @@ describe Harrison::Deploy do
         before(:each) do
           @mock_ssh = double(:ssh, exec: '', upload: true, download: true)
           allow(instance).to receive(:ssh).and_return(@mock_ssh)
+
+          instance.instance_variable_set(:@run_block, Proc.new { |h| "block for #{h.host}" })
         end
 
         it 'should use hosts from --hosts if passed' do
-          pending
-        end
-
-        it 'should use hosts from Harrisonfile if --hosts not passed' do
-          pending
-        end
-
-        it 'should require hosts to be set somehow' do
-          pending
-        end
-
-        it 'should invoke the previously stored block once for each host' do
-          instance.hosts = [ 'host1', 'host2', 'host3' ]
-
-          test_block = Proc.new { |test| puts "block for #{test.host}" }
-          instance.run(&test_block)
+          instance.instance_variable_set(:@_argv_hosts, [ 'argv_host1', 'argv_host2' ])
 
           output = capture(:stdout) do
             instance.run
           end
 
-          output.should include('block for host1', 'block for host2', 'block for host3')
+          instance.hosts.should == [ 'argv_host1', 'argv_host2' ]
+          output.should include('argv_host1', 'argv_host2')
+          output.should_not include('hf_host')
+        end
+
+        it 'should use hosts from Harrisonfile if --hosts not passed' do
+          output = capture(:stdout) do
+            instance.run
+          end
+
+          instance.hosts.should == [ 'hf_host' ]
+          output.should include('hf_host')
+        end
+
+        it 'should require hosts to be set somehow' do
+          instance.hosts = nil
+
+          output = capture(:stderr) do
+            lambda { instance.run }.should exit_with_code(1)
+          end
+
+          output.should include('must', 'specify', 'hosts')
+        end
+
+        it 'should invoke the previously stored block once for each host' do
+          instance.hosts = [ 'host1', 'host2', 'host3' ]
+
+          output = capture(:stdout) do
+            expect { |b| instance.run(&b); instance.run }.to yield_control.exactly(3).times
+          end
+
+          output.should include('host1', 'host2', 'host3')
         end
       end
     end
