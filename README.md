@@ -24,7 +24,7 @@ First, create a Harrisonfile in the root of your project. Here's an example:
 # Project-wide Config
 Harrison.config do |h|
   h.project = 'harrison'
-  h.git_src = "git@github.com:puppetlabs/harrison.git"
+  h.git_src = "git@github.com:scotje/harrison.git"
 end
 
 Harrison.package do |h|
@@ -130,7 +130,7 @@ There are some additional options available, run `harrison deploy --help` to see
 
 ## Contributing
 
-1. Fork it ( https://github.com/puppetlabs/harrison/fork )
+1. Fork it ( https://github.com/scotje/harrison/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)

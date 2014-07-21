@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Jesse Scott"]
   spec.email         = ["jesse@puppetlabs.com"]
   spec.summary       = %q{Simple artifact-based deployment for web applications.}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/scotje/harrison"
   spec.license       = "Apache 2.0"
 
   spec.files         = `git ls-files -z`.split("\x0")

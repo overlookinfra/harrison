@@ -3,7 +3,7 @@
 # Project-wide Config
 Harrison.config do |h|
   h.project = 'harrison'
-  h.git_src = "git@github.com:puppetlabs/harrison.git"
+  h.git_src = "git@github.com:scotje/harrison.git"
 end
 
 Harrison.package do |h|
