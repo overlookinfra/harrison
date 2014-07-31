@@ -1,0 +1,12 @@
+Ideas:
+------
+[ ] Allow more elaborate hosts config, e.g.: h.hosts = [ { host: '10.16.18.207', tags: %w(util migrate) } ]
+[ ] Some kind of --dry-run option.
+[ ] Allow deploy_via to include alternate user/connection options.
+[ ] Rename "releases" => "builds" (and "deploys" => "releases"?)
+[ ] Upload artifact to all hosts before the rest of the deployment process begins.
+[ ] --force option for deploy task to overwrite an existing release
+[ ] Something like a "status" command that shows what commit is live for env (on each host?)
+[ ] Move artifacts out of pkg/ (and into like pkg/deployed) once they have been deployed? (Some sort of flag for the significant env?)
+[ ] Include branch name in artifact file name.
+[ ] Make --purge the default behavior for the package step.
