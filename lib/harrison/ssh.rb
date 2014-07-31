@@ -13,40 +13,17 @@ module Harrison
       end
     end
 
-    # Helper to catch non-zero exit status and report errors.
     def exec(command)
       puts "INFO (ssh-exec #{desc}): #{command}" if Harrison::DEBUG
 
-      stdout_data = ""
-      stderr_data = ""
-      exit_code = nil
+      result = invoke(@conn, command)
 
-      @conn.open_channel do |channel|
-        channel.exec(command) do |ch, success|
-          warn "Couldn't execute command (ssh.channel.exec) on remote host: #{command}" unless success
-
-          channel.on_data do |ch,data|
-            stdout_data += data
-          end
-
-          channel.on_extended_data do |ch,type,data|
-            stderr_data += data
-          end
-
-          channel.on_request("exit-status") do |ch,data|
-            exit_code = data.read_long
-          end
-        end
+      if Harrison::DEBUG || result[:status] != 0
+        warn "STDERR (ssh-exec #{desc}): #{result[:stderr]}" unless result[:stderr].empty?
+        warn "STDOUT (ssh-exec #{desc}): #{result[:stdout]}" unless result[:stdout].empty?
       end
 
-      @conn.loop
-
-      if Harrison::DEBUG || exit_code != 0
-        warn "STDERR (ssh-exec #{desc}): #{stderr_data.strip}" unless stderr_data.empty?
-        warn "STDOUT (ssh-exec #{desc}): #{stdout_data.strip}" unless stdout_data.empty?
-      end
-
-      (exit_code == 0) ? stdout_data : nil
+      (result[:status] == 0) ? result[:stdout] : nil
     end
 
     def download(remote_path, local_path)
@@ -75,6 +52,37 @@ module Harrison
       else
         @conn.host
       end
+    end
+
+    protected
+    # ----------------------------------------
+
+    def invoke(conn, cmd)
+      stdout_data = ""
+      stderr_data = ""
+      exit_code = nil
+
+      conn.open_channel do |channel|
+        channel.exec(cmd) do |ch, success|
+          warn "Couldn't execute command (ssh.channel.exec) on remote host: #{cmd}" unless success
+
+          channel.on_data do |ch,data|
+            stdout_data += data
+          end
+
+          channel.on_extended_data do |ch,type,data|
+            stderr_data += data
+          end
+
+          channel.on_request("exit-status") do |ch,data|
+            exit_code = data.read_long
+          end
+        end
+      end
+
+      conn.loop
+
+      { status: exit_code, stdout: stdout_data.strip, stderr: stderr_data.strip }
     end
   end
 end
