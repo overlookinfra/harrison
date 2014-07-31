@@ -5,7 +5,6 @@ require 'harrison'
 
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
-  config.treat_symbols_as_metadata_keys_with_true_values = true
   config.run_all_when_everything_filtered = true
   config.filter_run :focus
 
@@ -28,12 +27,12 @@ RSpec::Matchers.define :exit_with_code do |exp_code|
     actual and actual == exp_code
   end
 
-  failure_message_for_should do |block|
+  failure_message do |block|
     "expected block to call exit(#{exp_code}) but exit" +
       (actual.nil? ? " not called" : "(#{actual}) was called")
   end
 
-  failure_message_for_should_not do |block|
+  failure_message_when_negated do |block|
     "expected block not to call exit(#{exp_code})"
   end
 
