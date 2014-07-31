@@ -10,17 +10,17 @@ describe Harrison::Deploy do
 
   describe '.initialize' do
     it 'should add --hosts to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include(':hosts')
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':hosts')
     end
 
     it 'should add --env to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include(':env')
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':env')
     end
 
     it 'should persist options' do
       instance = Harrison::Deploy.new(testopt: 'foo')
 
-      instance.instance_variable_get('@options').should include(testopt: 'foo')
+      expect(instance.instance_variable_get('@options')).to include(testopt: 'foo')
     end
   end
 
@@ -28,16 +28,16 @@ describe Harrison::Deploy do
     describe '#parse' do
       it 'should require an artifact to be passed in ARGV' do
         output = capture(:stderr) do
-          lambda { instance.parse(%w(deploy)) }.should exit_with_code(1)
+          expect(lambda { instance.parse(%w(deploy)) }).to exit_with_code(1)
         end
 
-        output.should include('must', 'specify', 'artifact')
+        expect(output).to include('must', 'specify', 'artifact')
       end
 
       it 'should use "base_dir" from Harrisonfile if present' do
         instance.parse(%w(deploy test_artifact.tar.gz))
 
-        instance.options.should include({ base_dir: '/hf_basedir' })
+        expect(instance.options).to include({ base_dir: '/hf_basedir' })
       end
     end
 
@@ -68,7 +68,7 @@ describe Harrison::Deploy do
           test_block = Proc.new { |test| "block_output" }
           instance.run(&test_block)
 
-          instance.instance_variable_get("@run_block").should == test_block
+          expect(instance.instance_variable_get("@run_block")).to be test_block
         end
       end
 
@@ -87,9 +87,9 @@ describe Harrison::Deploy do
             instance.run
           end
 
-          instance.hosts.should == [ 'argv_host1', 'argv_host2' ]
-          output.should include('argv_host1', 'argv_host2')
-          output.should_not include('hf_host')
+          expect(instance.hosts).to eq([ 'argv_host1', 'argv_host2' ])
+          expect(output).to include('argv_host1', 'argv_host2')
+          expect(output).to_not include('hf_host')
         end
 
         it 'should use hosts from Harrisonfile if --hosts not passed' do
@@ -97,18 +97,18 @@ describe Harrison::Deploy do
             instance.run
           end
 
-          instance.hosts.should == [ 'hf_host' ]
-          output.should include('hf_host')
+          expect(instance.hosts).to eq([ 'hf_host' ])
+          expect(output).to include('hf_host')
         end
 
         it 'should require hosts to be set somehow' do
           instance.hosts = nil
 
           output = capture(:stderr) do
-            lambda { instance.run }.should exit_with_code(1)
+            expect(lambda { instance.run }).to exit_with_code(1)
           end
 
-          output.should include('must', 'specify', 'hosts')
+          expect(output).to include('must', 'specify', 'hosts')
         end
 
         it 'should invoke the previously stored block once for each host' do
@@ -118,7 +118,7 @@ describe Harrison::Deploy do
             expect { |b| instance.run(&b); instance.run }.to yield_control.exactly(3).times
           end
 
-          output.should include('host1', 'host2', 'host3')
+          expect(output).to include('host1', 'host2', 'host3')
         end
       end
     end
@@ -156,7 +156,7 @@ describe Harrison::Deploy do
 
         instance.host = 'test_host'
 
-        instance.send(:ssh).should == mock_ssh
+        expect(instance.send(:ssh)).to be mock_ssh
       end
 
       it 'should reuse an existing connection to self.host' do
@@ -165,7 +165,7 @@ describe Harrison::Deploy do
 
         instance.host = :test_host2
 
-        instance.send(:ssh).should == mock_ssh
+        expect(instance.send(:ssh)).to be mock_ssh
       end
     end
 
@@ -174,7 +174,7 @@ describe Harrison::Deploy do
         instance.base_dir = '/test_base_dir'
         instance.project = 'test_project'
 
-        instance.send(:remote_project_dir).should include('/test_base_dir', 'test_project')
+        expect(instance.send(:remote_project_dir)).to include('/test_base_dir', 'test_project')
       end
     end
   end

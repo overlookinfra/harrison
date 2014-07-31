@@ -59,7 +59,7 @@ describe Harrison::SSH do
           instance.exec('cat noexist 2>/dev/null')
         end
 
-        output.should include('stdout', 'standard output')
+        expect(output).to include('stdout', 'standard output')
       end
 
       it 'should warn whatever the command emitted to stderr' do
@@ -67,12 +67,12 @@ describe Harrison::SSH do
           instance.exec('cat noexist 2>/dev/null')
         end
 
-        output.should include('stderr', 'standard error')
+        expect(output).to include('stderr', 'standard error')
       end
 
       it 'should return nil' do
         capture(:stderr) do
-          instance.exec('cat noexist 2>/dev/null').should be_nil
+          expect(instance.exec('cat noexist 2>/dev/null')).to be_nil
         end
       end
     end
@@ -99,7 +99,7 @@ describe Harrison::SSH do
           end
         end
 
-        output.should include('info', 'touch testfile')
+        expect(output).to include('info', 'touch testfile')
       end
 
       it 'should warn whatever the command emitted to stdout' do
@@ -109,7 +109,7 @@ describe Harrison::SSH do
           end
         end
 
-        output.should include('stdout', 'standard output')
+        expect(output).to include('stdout', 'standard output')
       end
 
       it 'should warn whatever the command emitted to stderr' do
@@ -119,7 +119,7 @@ describe Harrison::SSH do
           end
         end
 
-        output.should include('stderr', 'standard error')
+        expect(output).to include('stderr', 'standard error')
       end
     end
   end
@@ -154,7 +154,7 @@ describe Harrison::SSH do
           instance.download('remote', 'local')
         end
 
-        output.should include('scp-down', 'local', 'remote')
+        expect(output).to include('scp-down', 'local', 'remote')
       end
     end
   end
@@ -189,7 +189,7 @@ describe Harrison::SSH do
           instance.upload('local', 'remote')
         end
 
-        output.should include('scp-up', 'local', 'remote')
+        expect(output).to include('scp-up', 'local', 'remote')
       end
     end
   end
@@ -228,7 +228,7 @@ describe Harrison::SSH do
 
   describe '#desc' do
     it 'should include the host connected to' do
-      instance.desc.should include('test.example.com')
+      expect(instance.desc).to include('test.example.com')
     end
 
     context 'when using a proxy host' do
@@ -238,7 +238,7 @@ describe Harrison::SSH do
       end
 
       it 'should include the proxy host' do
-        instance.desc.should include('proxy.example.com')
+        expect(instance.desc).to include('proxy.example.com')
       end
     end
   end

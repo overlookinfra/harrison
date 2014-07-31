@@ -7,17 +7,17 @@ describe Harrison::Base do
     it 'should persist arg_opts' do
       instance = Harrison::Base.new(['foo'])
 
-      instance.instance_variable_get('@arg_opts').should include('foo')
+      expect(instance.instance_variable_get('@arg_opts')).to include('foo')
     end
 
     it 'should add debug to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include(':debug')
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':debug')
     end
 
     it 'should persist options' do
       instance = Harrison::Base.new([], testopt: 'foo')
 
-      instance.instance_variable_get('@options').should include(testopt: 'foo')
+      expect(instance.instance_variable_get('@options')).to include(testopt: 'foo')
     end
   end
 
@@ -26,13 +26,13 @@ describe Harrison::Base do
       it 'should define a getter instance method for the option' do
         Harrison::Base.option_helper('foo')
 
-        instance.methods.should include(:foo)
+        expect(instance.methods).to include(:foo)
       end
 
       it 'should define a setter instance method for the option' do
         Harrison::Base.option_helper('foo')
 
-        instance.methods.should include(:foo=)
+        expect(instance.methods).to include(:foo=)
       end
     end
   end
@@ -40,15 +40,15 @@ describe Harrison::Base do
   describe 'instance methods' do
     describe '#exec' do
       it 'should execute a command locally and return the output' do
-        instance.exec('echo "foo"').should == 'foo'
+        expect(instance.exec('echo "foo"')).to eq('foo')
       end
 
       it 'should complain if command returns non-zero' do
         output = capture(:stderr) do
-          lambda { instance.exec('cat noexist 2>/dev/null') }.should exit_with_code(1)
+          expect(lambda { instance.exec('cat noexist 2>/dev/null') }).to exit_with_code(1)
         end
 
-        output.should include('unable', 'execute', 'local', 'command')
+        expect(output).to include('unable', 'execute', 'local', 'command')
       end
     end
 
@@ -61,21 +61,29 @@ describe Harrison::Base do
       it 'should delegate command to ssh instance' do
         expect(@mock_ssh).to receive(:exec).and_return('remote_exec_return')
 
-        instance.remote_exec('remote exec').should == 'remote_exec_return'
+        expect(instance.remote_exec('remote exec')).to eq('remote_exec_return')
       end
 
       it 'should complain if command returns nil' do
         expect(@mock_ssh).to receive(:exec).and_return(nil)
 
         output = capture(:stderr) do
-          lambda { instance.remote_exec('remote exec fail') }.should exit_with_code(1)
+          expect(lambda { instance.remote_exec('remote exec fail') }).to exit_with_code(1)
         end
 
-        output.should include('unable', 'execute', 'remote', 'command')
+        expect(output).to include('unable', 'execute', 'remote', 'command')
       end
     end
 
     describe '#parse' do
+      before(:each) do
+        Harrison.send(:remove_const, "DEBUG") if Harrison.const_defined?("DEBUG")
+      end
+
+      after(:each) do
+        Harrison.send(:remove_const, "DEBUG") if Harrison.const_defined?("DEBUG")
+      end
+
       it 'should recognize options from the command line' do
         instance = Harrison::Base.new([
           [ :testopt, "Test option.", :type => :string ]
@@ -83,13 +91,13 @@ describe Harrison::Base do
 
         instance.parse(%w(test --testopt foozle))
 
-        instance.options.should include({testopt: 'foozle'})
+        expect(instance.options).to include({testopt: 'foozle'})
       end
 
       it 'should set the debug flag on the module when passed --debug' do
         instance.parse(%w(test --debug))
 
-        Harrison::DEBUG.should be_true
+        expect(Harrison::DEBUG).to be true
       end
     end
 
@@ -99,20 +107,20 @@ describe Harrison::Base do
           test_block = Proc.new { |test| "block_output" }
           instance.run(&test_block)
 
-          instance.instance_variable_get("@run_block").should == test_block
+          expect(instance.instance_variable_get("@run_block")).to eq(test_block)
         end
       end
 
       context 'when not given a block' do
         it 'should return nil if no block stored' do
-          instance.run.should == nil
+          expect(instance.run).to be_nil
         end
 
         it 'should invoke the previously stored block if it exists' do
           test_block = Proc.new { |test| "block_output" }
           instance.run(&test_block)
 
-          instance.run.should == "block_output"
+          expect(instance.run).to eq("block_output")
         end
       end
     end
@@ -124,9 +132,9 @@ describe Harrison::Base do
       end
 
       it 'should delegate downloads to the SSH class' do
-        expect(@mock_ssh).to receive(:download).with('remote', 'local').and_return(true)
+        expect(@mock_ssh).to receive(:download).with('remote', 'local')
 
-        instance.download('remote', 'local').should == true
+        instance.download('remote', 'local')
       end
     end
 
@@ -137,9 +145,9 @@ describe Harrison::Base do
       end
 
       it 'should delegate uploads to the SSH class' do
-        expect(@mock_ssh).to receive(:upload).with('local', 'remote').and_return(true)
+        expect(@mock_ssh).to receive(:upload).with('local', 'remote')
 
-        instance.upload('local', 'remote').should == true
+        instance.upload('local', 'remote')
       end
     end
 
@@ -151,9 +159,9 @@ describe Harrison::Base do
       end
 
       it 'should invoke close on ssh instance' do
-        expect(@mock_ssh).to receive(:close).and_return(true)
+        expect(@mock_ssh).to receive(:close)
 
-        instance.close.should == true
+        instance.close
       end
     end
   end
@@ -164,7 +172,7 @@ describe Harrison::Base do
         mock_ssh = double(:ssh)
         expect(Harrison::SSH).to receive(:new).and_return(mock_ssh)
 
-        instance.send(:ssh).should == mock_ssh
+        expect(instance.send(:ssh)).to be mock_ssh
       end
 
       it 'should return previously instantiated ssh instance' do
@@ -172,7 +180,7 @@ describe Harrison::Base do
         instance.instance_variable_set('@ssh', mock_ssh)
         expect(Harrison::SSH).to_not receive(:new)
 
-        instance.send(:ssh).should == mock_ssh
+        expect(instance.send(:ssh)).to be mock_ssh
       end
     end
 
@@ -180,14 +188,14 @@ describe Harrison::Base do
       it 'should try to create a directory locally' do
         expect(instance).to receive(:system).with(/local_dir/).and_return(true)
 
-        instance.send(:ensure_local_dir, 'local_dir').should == true
+        expect(instance.send(:ensure_local_dir, 'local_dir')).to be true
       end
 
       it 'should only try to create a directory once' do
         expect(instance).to receive(:system).with(/local_dir/).once.and_return(true)
 
-        instance.send(:ensure_local_dir, 'local_dir').should == true
-        instance.send(:ensure_local_dir, 'local_dir').should == true
+        expect(instance.send(:ensure_local_dir, 'local_dir')).to be true
+        expect(instance.send(:ensure_local_dir, 'local_dir')).to be true
       end
     end
 
@@ -200,21 +208,21 @@ describe Harrison::Base do
       it 'should try to create a directory remotely' do
         expect(@mock_ssh).to receive(:exec).with(/remote_dir/).and_return(true)
 
-        instance.send(:ensure_remote_dir, 'testhost', 'remote_dir').should == true
+        expect(instance.send(:ensure_remote_dir, 'testhost', 'remote_dir')).to be true
       end
 
       it 'should try to create a directory once for each distinct host' do
         expect(@mock_ssh).to receive(:exec).with(/remote_dir/).twice.and_return(true)
 
-        instance.send(:ensure_remote_dir, 'test-host', 'remote_dir').should == true
-        instance.send(:ensure_remote_dir, 'another-host', 'remote_dir').should == true
+        expect(instance.send(:ensure_remote_dir, 'test-host', 'remote_dir')).to be true
+        expect(instance.send(:ensure_remote_dir, 'another-host', 'remote_dir')).to be true
       end
 
       it 'should only try to create a directory once for the same host' do
         expect(@mock_ssh).to receive(:exec).with(/remote_dir/).once.and_return(true)
 
-        instance.send(:ensure_remote_dir, 'test-host', 'remote_dir').should == true
-        instance.send(:ensure_remote_dir, 'test-host', 'remote_dir').should == true
+        expect(instance.send(:ensure_remote_dir, 'test-host', 'remote_dir')).to be true
+        expect(instance.send(:ensure_remote_dir, 'test-host', 'remote_dir')).to be true
       end
     end
   end

@@ -11,25 +11,25 @@ describe Harrison::Package do
 
   describe '.initialize' do
     it 'should add --commit to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include(':commit')
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':commit')
     end
 
     it 'should add --purge to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include(':purge')
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':purge')
     end
 
     it 'should add --pkg-dir to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include(':pkg_dir')
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':pkg_dir')
     end
 
     it 'should add --remote-dir to arg_opts' do
-      instance.instance_variable_get('@arg_opts').to_s.should include(':remote_dir')
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':remote_dir')
     end
 
     it 'should persist options' do
       instance = Harrison::Package.new(testopt: 'foo')
 
-      instance.instance_variable_get('@options').should include(testopt: 'foo')
+      expect(instance.instance_variable_get('@options')).to include(testopt: 'foo')
     end
   end
 
@@ -57,7 +57,7 @@ describe Harrison::Package do
           test_block = Proc.new { |test| "block_output" }
           instance.run(&test_block)
 
-          instance.instance_variable_get("@run_block").should == test_block
+          expect(instance.instance_variable_get("@run_block")).to be test_block
         end
       end
 
@@ -79,7 +79,7 @@ describe Harrison::Package do
             instance.run
           end
 
-          output.should include('block for hf_host')
+          expect(output).to include('block for hf_host')
         end
       end
     end
@@ -91,7 +91,7 @@ describe Harrison::Package do
         instance.remote_dir = '~/.harrison'
         instance.project = 'test_project'
 
-        instance.send(:remote_project_dir).should include('~/.harrison', 'test_project')
+        expect(instance.send(:remote_project_dir)).to include('~/.harrison', 'test_project')
       end
     end
 
@@ -100,7 +100,7 @@ describe Harrison::Package do
         instance.commit = 'giant'
         expect(instance).to receive(:exec).with(/git rev-parse.*giant/).and_return('fef1f0')
 
-        instance.send(:resolve_commit!).should == 'fef1f0'
+        expect(instance.send(:resolve_commit!)).to eq('fef1f0')
       end
     end
 
@@ -108,19 +108,19 @@ describe Harrison::Package do
       it 'should return an empty string if exclude is nil' do
         instance.exclude = nil
 
-        instance.send(:excludes_for_tar).should == ''
+        expect(instance.send(:excludes_for_tar)).to be_empty
       end
 
       it 'should return an empty string if exclude is empty' do
         instance.exclude = []
 
-        instance.send(:excludes_for_tar).should == ''
+        expect(instance.send(:excludes_for_tar)).to be_empty
       end
 
       it 'should return an --exclude option for each member of exclude' do
         instance.exclude = [ 'fee', 'fi', 'fo', 'fum' ]
 
-        instance.send(:excludes_for_tar).scan(/--exclude/).size.should == instance.exclude.size
+        expect(instance.send(:excludes_for_tar).scan(/--exclude/).size).to eq(instance.exclude.size)
       end
     end
   end

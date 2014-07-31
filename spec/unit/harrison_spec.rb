@@ -16,38 +16,38 @@ describe Harrison do
   describe '.invoke' do
     it 'should exit when no args are passed' do
       output = capture(:stderr) do
-        lambda { Harrison.invoke([]) }.should exit_with_code(1)
+        expect(lambda { Harrison.invoke([]) }).to exit_with_code(1)
       end
 
-      output.should include('no', 'command', 'given')
+      expect(output).to include('no', 'command', 'given')
     end
 
     it 'should output base help when first arg is --help' do
       output = capture(:stdout) do
-        lambda { Harrison.invoke(['--help']) }.should exit_with_code(0)
+        expect(lambda { Harrison.invoke(['--help']) }).to exit_with_code(0)
       end
 
-      output.should include('options', 'debug', 'help')
+      expect(output).to include('options', 'debug', 'help')
     end
 
     it 'should look for a Harrisonfile' do
       expect(Harrison).to receive(:find_harrisonfile).and_return(harrisonfile_fixture_path)
 
       output = capture(:stderr) do
-        lambda { Harrison.invoke(['test']) }.should exit_with_code(1)
+        expect(lambda { Harrison.invoke(['test']) }).to exit_with_code(1)
       end
 
-      output.should include('unrecognized', 'command', 'test')
+      expect(output).to include('unrecognized', 'command', 'test')
     end
 
     it 'should complain if unable to find a Harrisonfile' do
       expect(Harrison).to receive(:find_harrisonfile).and_return(nil)
 
       output = capture(:stderr) do
-        lambda { Harrison.invoke(['test']) }.should exit_with_code(1)
+        expect(lambda { Harrison.invoke(['test']) }).to exit_with_code(1)
       end
 
-      output.should include('could', 'not', 'find', 'harrisonfile')
+      expect(output).to include('could', 'not', 'find', 'harrisonfile')
     end
   end
 
@@ -56,7 +56,7 @@ describe Harrison do
       mock_config = double(:config)
       expect(Harrison::Config).to receive(:new).and_return(mock_config)
 
-      Harrison.config.should == mock_config
+      expect(Harrison.config).to be mock_config
     end
 
     it 'should return existing Harrison::Config if defined' do
@@ -64,7 +64,7 @@ describe Harrison do
       Harrison.class_variable_set(:@@config, mock_config)
       expect(Harrison::Config).to_not receive(:new)
 
-      Harrison.config.should == mock_config
+      expect(Harrison.config).to be mock_config
     end
 
     it 'should yield config if given a block' do
@@ -124,13 +124,13 @@ describe Harrison do
       it 'should find a Harrisonfile if it exists in pwd' do
         expect(Dir).to receive(:pwd).and_return(fixture_path)
 
-        Harrison.send(:find_harrisonfile).should == harrisonfile_fixture_path
+        expect(Harrison.send(:find_harrisonfile)).to eq(harrisonfile_fixture_path)
       end
 
       it 'should find a Harrisonfile if it exists in parent of pwd' do
         expect(Dir).to receive(:pwd).and_return(fixture_path + '/nested')
 
-        Harrison.send(:find_harrisonfile).should == harrisonfile_fixture_path
+        expect(Harrison.send(:find_harrisonfile)).to eq(harrisonfile_fixture_path)
       end
 
       it 'should return nil if there is no Harrisonfile in tree' do
@@ -140,7 +140,7 @@ describe Harrison do
         allow(File).to receive(:expand_path).and_call_original
         allow(File).to receive(:expand_path).with("..", File.dirname(__FILE__)).and_return(File.dirname(__FILE__))
 
-        Harrison.send(:find_harrisonfile).should be_nil
+        expect(Harrison.send(:find_harrisonfile)).to be_nil
       end
     end
 
@@ -150,7 +150,7 @@ describe Harrison do
           Harrison.send(:eval_script, fixture_path + '/eval_script.rb')
         end
 
-        output.should == "this file was eval-led\n"
+        expect(output).to eq("this file was eval-led\n")
       end
     end
   end
