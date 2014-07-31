@@ -2,6 +2,8 @@
 
 Simple artifact-based deployment for web applications.
 
+[![Build Status](https://travis-ci.org/scotje/harrison.svg?branch=master)](https://travis-ci.org/scotje/harrison)
+
 ## Installation
 
 Add this line to your application's Gemfile:
