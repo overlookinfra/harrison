@@ -34,7 +34,7 @@ describe Harrison::SSH do
         proxy = double(:ssh_proxy)
 
         expect(Net::SSH::Proxy::Command).to receive(:new).and_return(proxy)
-        expect(Net::SSH).to receive(:start).with('test.example.com', 'test_user', { forward_agent: true, proxy: proxy }).and_return(double(:ssh_conn))
+        expect(Net::SSH).to receive(:start).with('test.example.com', 'test_user', { forward_agent: true, proxy: proxy, timeout: 10 }).and_return(double(:ssh_conn))
 
         Harrison::SSH.new(host: 'test.example.com', user: 'test_user', proxy: 'test-proxy.example.com')
       end

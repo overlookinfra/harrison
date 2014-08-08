@@ -74,7 +74,7 @@ describe Harrison::Deploy do
 
       context 'when not passed a block' do
         before(:each) do
-          @mock_ssh = double(:ssh, exec: '', upload: true, download: true)
+          @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
           allow(instance).to receive(:ssh).and_return(@mock_ssh)
 
           instance.instance_variable_set(:@run_block, Proc.new { |h| "block for #{h.host}" })

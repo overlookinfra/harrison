@@ -7,9 +7,9 @@ module Harrison
     def initialize(opts={})
       if opts[:proxy]
         @proxy = Net::SSH::Proxy::Command.new("ssh #{opts[:proxy]} \"nc %h %p\" 2>/dev/null")
-        @conn = Net::SSH.start(opts[:host], opts[:user], forward_agent: true, proxy: @proxy)
+        @conn = Net::SSH.start(opts[:host], opts[:user], forward_agent: true, proxy: @proxy, timeout: 10)
       else
-        @conn = Net::SSH.start(opts[:host], opts[:user], forward_agent: true)
+        @conn = Net::SSH.start(opts[:host], opts[:user], forward_agent: true, timeout: 10)
       end
     end
 
@@ -52,6 +52,10 @@ module Harrison
       else
         @conn.host
       end
+    end
+
+    def host
+      @conn.host
     end
 
     protected

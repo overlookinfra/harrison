@@ -56,8 +56,8 @@ module Harrison
       hosts.each do |h|
         self.host = h
 
-        ensure_remote_dir(self.host, "#{remote_project_dir}/deploys")
-        ensure_remote_dir(self.host, "#{remote_project_dir}/releases")
+        ensure_remote_dir("#{remote_project_dir}/deploys", self.ssh)
+        ensure_remote_dir("#{remote_project_dir}/releases", self.ssh)
 
         # Make folder for release or bail if it already exists.
         remote_exec("mkdir #{release_dir}")

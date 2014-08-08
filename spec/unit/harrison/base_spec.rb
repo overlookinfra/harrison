@@ -184,6 +184,20 @@ describe Harrison::Base do
       end
     end
 
+    describe '#remote_destination_regex' do
+      it 'should match a standard remote SCP target without a username' do
+        expect(instance.send(:remote_destination_regex)).to match("test_host1:/tmp/target")
+      end
+
+      it 'should match a standard remote SCP target with a username' do
+        expect(instance.send(:remote_destination_regex)).to match("testuser@test_host:/tmp/target")
+      end
+
+      it 'should not match a local file path' do
+        expect(instance.send(:remote_destination_regex)).not_to match("tmp/target")
+      end
+    end
+
     describe '#ensure_local_dir' do
       it 'should try to create a directory locally' do
         expect(instance).to receive(:system).with(/local_dir/).and_return(true)
@@ -201,28 +215,30 @@ describe Harrison::Base do
 
     describe '#ensure_remote_dir' do
       before(:each) do
-        @mock_ssh = double(:ssh)
+        @mock_ssh = double(:ssh, host: 'test_host1')
+        @mock_ssh2 = double(:ssh, host: 'test_host2')
+
         allow(instance).to receive(:ssh).and_return(@mock_ssh)
       end
 
       it 'should try to create a directory remotely' do
         expect(@mock_ssh).to receive(:exec).with(/remote_dir/).and_return(true)
-
-        expect(instance.send(:ensure_remote_dir, 'testhost', 'remote_dir')).to be true
+        expect(instance.send(:ensure_remote_dir, 'remote_dir')).to be true
       end
 
-      it 'should try to create a directory once for each distinct host' do
-        expect(@mock_ssh).to receive(:exec).with(/remote_dir/).twice.and_return(true)
+      it 'should try to create a directory once for each distinct ssh connection' do
+        expect(@mock_ssh).to receive(:exec).with(/remote_dir/).once.and_return(true)
+        expect(@mock_ssh2).to receive(:exec).with(/remote_dir/).once.and_return(true)
 
-        expect(instance.send(:ensure_remote_dir, 'test-host', 'remote_dir')).to be true
-        expect(instance.send(:ensure_remote_dir, 'another-host', 'remote_dir')).to be true
+        expect(instance.send(:ensure_remote_dir, 'remote_dir')).to be true
+        expect(instance.send(:ensure_remote_dir, 'remote_dir', @mock_ssh2)).to be true
       end
 
-      it 'should only try to create a directory once for the same host' do
+      it 'should only try to create a directory once for the same ssh connection' do
         expect(@mock_ssh).to receive(:exec).with(/remote_dir/).once.and_return(true)
 
-        expect(instance.send(:ensure_remote_dir, 'test-host', 'remote_dir')).to be true
-        expect(instance.send(:ensure_remote_dir, 'test-host', 'remote_dir')).to be true
+        expect(instance.send(:ensure_remote_dir, 'remote_dir')).to be true
+        expect(instance.send(:ensure_remote_dir, 'remote_dir')).to be true
       end
     end
   end
