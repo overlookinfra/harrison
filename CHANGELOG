@@ -1,7 +1,10 @@
-- Implement remote destinations for 'package' task.
-
-
 0.1.0
 -------------------
+- Renamed --pkg_dir option of 'package' task to --destination
+- Implemented remote destinations for 'package' task.
+- Implemented remote artifact sources for 'deploy' task.
+- Added a default timeout of 10 seconds when establishing an SSH connection.
 
+0.0.1
+-------------------
 - Initial public release.

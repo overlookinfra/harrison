@@ -37,6 +37,10 @@ Harrison.package do |h|
   # Things we don't want to package.
   h.exclude = %w(.git ./config ./coverage ./examples ./log ./pkg ./tmp ./spec)
 
+  # Where to save the artifact by default.
+  h.destination = 'pkg' # Local folder
+  # h.destination = 'jesse@artifact-host.example.com:/tmp/artifacts' # Remote folder
+
   # Define the build process here.
   h.run do |h|
     # Bundle Install
@@ -84,13 +88,30 @@ The `--commit` option understands anything that `git rev-parse` understands. *NO
 reference must be pushed to the repository referenced as `git_src` in the Harrisonfile before
 you can build it.*
 
-The packaged release artifact will, by default, be saved into a 'pkg' subfolder:
+The packaged release artifact will, by default, be saved into a local 'pkg' subfolder:
 
 ```
 $ harrison package
 Packaging 5a547d8 for "harrison" on build-server.example.com...
 Sucessfully packaged 5a547d8 to pkg/20140711170226-5a547d8.tar.gz
 ```
+
+You can set the destination on the command line with the `--destination` option, or
+specify a new default in your Harrisonfile:
+
+```
+h.destination = '/tmp'
+```
+
+You can also specify a remote destination:
+
+```
+h.destination = 'jesse@artifact-host.example.com:/tmp/artifacts'
+```
+
+The username is optional and, if omitted, the build user will be used. *NOTE: Your build server
+must have already accepted the SSH host key of the destination server in order to transfer the
+artifact.*
 
 There are some additional options available, run `harrison package --help` to see everything available.
 
@@ -103,7 +124,16 @@ Use the `harrison deploy` command passing the artifact to be deployed as an argu
 $ harrison deploy pkg/20140711170226-5a547d8.tar.gz
 ```
 
-By default, this will deploy to the list of hosts defined in your Harrisonfile.
+You can also deploy from a remote artifact source:
+
+```
+$ harrison deploy jesse@artifact-host.example.com:/tmp/artifacts/20140711170226-5a547d8.tar.gz
+```
+
+*NOTE: Each target server must have already accepted the SSH host key of the source server in order to
+transfer the artifact.*
+
+By default, the artifact will be deployed to the list of hosts defined in your Harrisonfile.
 
 You can override the target hosts by passing a `--hosts` option:
 
