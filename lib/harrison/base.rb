@@ -87,6 +87,10 @@ module Harrison
       @ssh ||= Harrison::SSH.new(host: @options[:host], user: @options[:user])
     end
 
+    def remote_destination_regex
+      /^(?:(\S+)@)?(\S+):(\S+)$/
+    end
+
     def ensure_local_dir(dir)
       @_ensured_local ||= {}
       @_ensured_local[dir] || (system("if [ ! -d #{dir} ] ; then mkdir -p #{dir} ; fi") && @_ensured_local[dir] = true) || abort("Error: Unable to create local directory \"#{dir}\".")

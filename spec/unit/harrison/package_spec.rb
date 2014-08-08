@@ -18,8 +18,8 @@ describe Harrison::Package do
       expect(instance.instance_variable_get('@arg_opts').to_s).to include(':purge')
     end
 
-    it 'should add --pkg-dir to arg_opts' do
-      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':pkg_dir')
+    it 'should add --destination to arg_opts' do
+      expect(instance.instance_variable_get('@arg_opts').to_s).to include(':destination')
     end
 
     it 'should add --remote-dir to arg_opts' do
@@ -66,7 +66,7 @@ describe Harrison::Package do
           @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
           allow(instance).to receive(:ssh).at_least(:once).and_return(@mock_ssh)
 
-          allow(instance).to receive(:ensure_local_dir).and_return(true)
+          allow(instance).to receive(:ensure_destination).and_return(true)
           allow(instance).to receive(:resolve_commit!).and_return('test')
           allow(instance).to receive(:excludes_for_tar).and_return('')
         end
@@ -121,6 +121,22 @@ describe Harrison::Package do
         instance.exclude = [ 'fee', 'fi', 'fo', 'fum' ]
 
         expect(instance.send(:excludes_for_tar).scan(/--exclude/).size).to eq(instance.exclude.size)
+      end
+    end
+
+    describe '#ensure_destination' do
+      it 'should ensure a local destination' do
+        expect(instance).to receive(:ensure_local_dir).with('/tmp/test_path').and_return(true)
+
+        instance.send(:ensure_destination, '/tmp/test_path')
+      end
+
+      it 'should ensure a remote destination' do
+        mock_ssh = double(:ssh, host: 'test_host1')
+        expect(mock_ssh).to receive(:exec).with(/\/tmp\/test_path/).and_return(true)
+        expect(Harrison::SSH).to receive(:new).with({ host: 'test_host1', user: 'test_user' }).and_return(mock_ssh)
+
+        instance.send(:ensure_destination, 'test_user@test_host1:/tmp/test_path')
       end
     end
   end
