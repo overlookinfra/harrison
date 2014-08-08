@@ -92,10 +92,13 @@ module Harrison
       @_ensured_local[dir] || (system("if [ ! -d #{dir} ] ; then mkdir -p #{dir} ; fi") && @_ensured_local[dir] = true) || abort("Error: Unable to create local directory \"#{dir}\".")
     end
 
-    def ensure_remote_dir(host, dir)
+    def ensure_remote_dir(dir, with_ssh = nil)
+      with_ssh = ssh if with_ssh.nil?
+      host = with_ssh.host
+
       @_ensured_remote ||= {}
       @_ensured_remote[host] ||= {}
-      @_ensured_remote[host][dir] || (ssh.exec("if [ ! -d #{dir} ] ; then mkdir -p #{dir} ; fi") && @_ensured_remote[host][dir] = true) || abort("Error: Unable to create remote directory \"#{dir}\" on \"#{host}\".")
+      @_ensured_remote[host][dir] || (with_ssh.exec("if [ ! -d #{dir} ] ; then mkdir -p #{dir} ; fi") && @_ensured_remote[host][dir] = true) || abort("Error: Unable to create remote directory \"#{dir}\" on \"#{host}\".")
     end
   end
 end

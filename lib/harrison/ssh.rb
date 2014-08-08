@@ -54,6 +54,10 @@ module Harrison
       end
     end
 
+    def host
+      @conn.host
+    end
+
     protected
     # ----------------------------------------
 

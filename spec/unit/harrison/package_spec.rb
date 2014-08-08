@@ -63,7 +63,7 @@ describe Harrison::Package do
 
       context 'when not passed a block' do
         before(:each) do
-          @mock_ssh = double(:ssh, exec: '', upload: true, download: true)
+          @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
           allow(instance).to receive(:ssh).at_least(:once).and_return(@mock_ssh)
 
           allow(instance).to receive(:ensure_local_dir).and_return(true)
