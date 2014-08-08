@@ -87,7 +87,7 @@ module Harrison
       @ssh ||= Harrison::SSH.new(host: @options[:host], user: @options[:user])
     end
 
-    def remote_destination_regex
+    def remote_regex
       /^(?:(\S+)@)?(\S+):(\S+)$/
     end
 

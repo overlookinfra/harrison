@@ -53,7 +53,7 @@ module Harrison
       # Package build folder into tgz.
       remote_exec("rm -f #{artifact_name(commit)}.tar.gz && cd #{commit} && tar #{excludes_for_tar} -czf ../#{artifact_name(commit)}.tar.gz .")
 
-      if match = remote_destination_regex.match(destination)
+      if match = remote_regex.match(destination)
         # Copy artifact to remote destination.
         dest_user, dest_host, dest_path = match.captures
         dest_user ||= self.user
@@ -93,7 +93,7 @@ module Harrison
     end
 
     def ensure_destination(destination)
-      if match = remote_destination_regex.match(destination)
+      if match = remote_regex.match(destination)
         dest_user, dest_host, dest_path = match.captures
         dest_user ||= self.user
 

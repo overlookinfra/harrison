@@ -184,17 +184,17 @@ describe Harrison::Base do
       end
     end
 
-    describe '#remote_destination_regex' do
+    describe '#remote_regex' do
       it 'should match a standard remote SCP target without a username' do
-        expect(instance.send(:remote_destination_regex)).to match("test_host1:/tmp/target")
+        expect(instance.send(:remote_regex)).to match("test_host1:/tmp/target")
       end
 
       it 'should match a standard remote SCP target with a username' do
-        expect(instance.send(:remote_destination_regex)).to match("testuser@test_host:/tmp/target")
+        expect(instance.send(:remote_regex)).to match("testuser@test_host:/tmp/target")
       end
 
       it 'should not match a local file path' do
-        expect(instance.send(:remote_destination_regex)).not_to match("tmp/target")
+        expect(instance.send(:remote_regex)).not_to match("tmp/target")
       end
     end
 

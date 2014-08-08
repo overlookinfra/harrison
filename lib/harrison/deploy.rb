@@ -62,8 +62,16 @@ module Harrison
         # Make folder for release or bail if it already exists.
         remote_exec("mkdir #{release_dir}")
 
-        # Upload artifact to host.
-        upload(artifact, "#{remote_project_dir}/releases/")
+        if match = remote_regex.match(artifact)
+          # Copy artifact to host from remote source.
+          src_user, src_host, src_path = match.captures
+          src_user ||= self.user
+
+          remote_exec("scp #{src_user}@#{src_host}:#{src_path} #{remote_project_dir}/releases/")
+        else
+          # Upload artifact to host.
+          upload(artifact, "#{remote_project_dir}/releases/")
+        end
 
         # Unpack.
         remote_exec("cd #{release_dir} && tar -xzf ../#{File.basename(artifact)}")

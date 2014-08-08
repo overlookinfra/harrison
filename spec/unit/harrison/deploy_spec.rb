@@ -120,6 +120,33 @@ describe Harrison::Deploy do
 
           expect(output).to include('host1', 'host2', 'host3')
         end
+
+        context 'when deploying from a remote artifact source' do
+          before(:each) do
+            instance.artifact = 'test_user@test_host1:/tmp/test_artifact.tar.gz'
+          end
+
+          it 'should invoke scp on the remote host' do
+            allow(instance).to receive(:remote_exec).and_return('')
+            expect(instance).to receive(:remote_exec).with(/scp test_user@test_host1:\/tmp\/test_artifact.tar.gz/).and_return('')
+
+            output = capture(:stdout) do
+              instance.run
+            end
+
+            expect(output).to include('deployed', 'test_user', 'test_host1', '/tmp/test_artifact.tar.gz')
+          end
+
+          it 'should not invoke Harrison::SSH.upload' do
+            expect(@mock_ssh).not_to receive(:upload)
+
+            output = capture(:stdout) do
+              instance.run
+            end
+
+            expect(output).to include('deployed', 'test_user', 'test_host1', '/tmp/test_artifact.tar.gz')
+          end
+        end
       end
     end
 
