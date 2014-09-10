@@ -11,11 +11,13 @@ module Harrison
       self.class.option_helper(:env)
       self.class.option_helper(:base_dir)
       self.class.option_helper(:deploy_via)
+      self.class.option_helper(:keep)
 
       # Command line opts for this action. Will be merged with common opts.
       arg_opts = [
         [ :hosts, "List of remote hosts to deploy to. Can also be specified in Harrisonfile.", :type => :strings ],
         [ :env, "Environment to deploy to. This can be examined in your Harrisonfile to calculate target hosts.", :type => :string ],
+        [ :keep, "Number of recent deploys to keep after a successful deploy. (Including the most recent deploy.) Defaults to keeping all deploys forever.", :type => :integer ],
       ]
 
       super(arg_opts, opts)
@@ -88,10 +90,40 @@ module Harrison
         # Run user supplied deploy code to restart server or whatever.
         super
 
+        # Cleanup old releases if a keep value is set.
+        if (self.keep)
+          cleanup_deploys(self.keep)
+          cleanup_releases
+        end
+
         close(self.host)
       end
 
       puts "Sucessfully deployed #{artifact} to #{hosts.join(', ')}."
+    end
+
+    def cleanup_deploys(limit)
+      # Grab a list of deploys to be removed.
+      purge_deploys = self.deploys.sort.reverse.slice(limit..-1) || []
+
+      if purge_deploys.size > 0
+        puts "Purging #{purge_deploys.size} old deploys on #{self.host}, keeping #{limit}..."
+
+        purge_deploys.each do |stale_deploy|
+          remote_exec("cd deploys && rm -f #{stale_deploy}")
+        end
+      end
+    end
+
+    def cleanup_releases
+      # Figure out which releases need to be kept.
+      keep_releases = self.active_releases
+
+      self.releases.each do |release|
+        unless keep_releases.include?(release)
+          remote_exec("cd releases && rm -rf #{release}")
+        end
+      end
     end
 
     def close(host=nil)
@@ -113,6 +145,21 @@ module Harrison
 
     def remote_project_dir
       "#{base_dir}/#{project}"
+    end
+
+    # Return a sorted list of deploys, unsorted.
+    def deploys
+      remote_exec("cd deploys && ls -1").split("\n")
+    end
+
+    # Return a list of all releases, unsorted.
+    def releases
+      remote_exec("cd releases && ls -1").split("\n")
+    end
+
+    # Return a list of releases with at least 1 deploy pointing to them, unsorted.
+    def active_releases
+      self.deploys.collect { |deploy| remote_exec("cd deploys && basename `readlink #{deploy}`") }.uniq
     end
   end
 end

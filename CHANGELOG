@@ -1,3 +1,7 @@
+0.2.0
+-------------------
+- Implemented the ability to purge old releases after a successful deploy.
+
 0.1.0
 -------------------
 - Renamed --pkg_dir option of 'package' task to --destination

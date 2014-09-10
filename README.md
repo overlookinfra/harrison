@@ -157,6 +157,10 @@ else
 end
 ```
 
+You can use the `--keep` option (or set it in the deploy section of your Harrisonfile) to specify the total number of
+deploys you want to retain on each server after a successful deployment. The default is to keep all previous deploys
+around indefinitely.
+
 There are some additional options available, run `harrison deploy --help` to see everything available.
 
 

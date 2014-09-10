@@ -121,6 +121,17 @@ describe Harrison::Deploy do
           expect(output).to include('host1', 'host2', 'host3')
         end
 
+        it 'should clean up old releases if passed a --keep option' do
+          instance.keep = 3
+
+          expect(instance).to receive(:cleanup_deploys).with(3)
+          expect(instance).to receive(:cleanup_releases)
+
+          output = capture(:stdout) do
+            instance.run
+          end
+        end
+
         context 'when deploying from a remote artifact source' do
           before(:each) do
             instance.artifact = 'test_user@test_host1:/tmp/test_artifact.tar.gz'
@@ -146,6 +157,39 @@ describe Harrison::Deploy do
 
             expect(output).to include('deployed', 'test_user', 'test_host1', '/tmp/test_artifact.tar.gz')
           end
+        end
+      end
+    end
+
+    describe '#cleanup_deploys' do
+      before(:each) do
+        allow(instance).to receive(:deploys).and_return([ 'deploy_1', 'deploy_2', 'deploy_3', 'deploy_4', 'deploy_5' ])
+      end
+
+      it 'should remove deploys beyond the passed in limit' do
+        expect(instance).to receive(:remote_exec).with(/rm -f deploy_2/).and_return('')
+        expect(instance).to receive(:remote_exec).with(/rm -f deploy_1/).and_return('')
+
+        output = capture(:stdout) do
+          instance.cleanup_deploys(3)
+        end
+
+        expect(output).to include('purging', 'deploys', 'keeping 3')
+      end
+    end
+
+    describe '#cleanup_releases' do
+      before(:each) do
+        allow(instance).to receive(:releases).and_return([ 'release_1', 'release_2', 'release_3', 'release_4', 'release_5' ])
+        allow(instance).to receive(:active_releases).and_return([ 'release_3', 'release_4', 'release_5' ])
+      end
+
+      it 'should remove inactive releases' do
+        expect(instance).to receive(:remote_exec).with(/rm -rf release_1/).and_return('')
+        expect(instance).to receive(:remote_exec).with(/rm -rf release_2/).and_return('')
+
+        capture(:stdout) do
+          instance.cleanup_releases
         end
       end
     end
@@ -202,6 +246,73 @@ describe Harrison::Deploy do
         instance.project = 'test_project'
 
         expect(instance.send(:remote_project_dir)).to include('/test_base_dir', 'test_project')
+      end
+    end
+
+    describe '#deploys' do
+      it 'should invoke ls in the correct directory on the remote server' do
+        expect(instance).to receive(:remote_exec).with(/deploys.*ls -1/).and_return('')
+
+        instance.send(:deploys)
+      end
+
+      it 'should return an array of deploys' do
+        expect(instance).to receive(:remote_exec).and_return("deploy_1\ndeploy_2\ndeploy_3\n")
+
+        deploys = instance.send(:deploys)
+
+        expect(deploys).to respond_to(:size)
+        expect(deploys.size).to be 3
+      end
+    end
+
+    describe '#releases' do
+      it 'should invoke ls in the correct directory on the remote server' do
+        expect(instance).to receive(:remote_exec).with(/releases.*ls -1/).and_return('')
+
+        instance.send(:releases)
+      end
+
+      it 'should return an array of releases' do
+        expect(instance).to receive(:remote_exec).and_return("release_1\nrelease_2\nrelease_3\n")
+
+        releases = instance.send(:releases)
+
+        expect(releases).to respond_to(:size)
+        expect(releases.size).to be 3
+      end
+    end
+
+    describe '#active_releases' do
+      before(:each) do
+        allow(instance).to receive(:remote_exec).with(/readlink/) do |cmd|
+          "release_" + /`readlink deploy_([0-9]+)`/.match(cmd).captures[0]
+        end
+      end
+
+      it 'should return an array of releases' do
+        expect(instance).to receive(:deploys).and_return([ 'deploy_3', 'deploy_4', 'deploy_5' ])
+
+        active_releases = instance.send(:active_releases)
+
+        expect(active_releases).to respond_to(:size)
+        expect(active_releases.size).to be 3
+      end
+
+      it 'should only return distinct releases' do
+        expect(instance).to receive(:deploys).and_return([ 'deploy_3', 'deploy_4', 'deploy_5', 'deploy_3' ])
+
+        active_releases = instance.send(:active_releases)
+
+        expect(active_releases.size).to be 3
+      end
+
+      it 'should return releases corresponding to given deploys' do
+        expect(instance).to receive(:deploys).and_return([ 'deploy_3' ])
+
+        active_releases = instance.send(:active_releases)
+
+        expect(active_releases).to include('release_3')
       end
     end
   end
