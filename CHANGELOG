@@ -1,3 +1,13 @@
+next
+-------------------
+- Allow multiple users to execute the "package" task for the same project
+  simultaneously.
+- BREAKING: Commands executed with remote_exec() inside the "run" block of
+  the "package" task will now execute in your commit working directory, so
+  you no longer need to prefix commands with "cd #{h.commit}". You will
+  need to update existing Harrisonfile "package" run blocks to reflect the
+  change of execution context.
+
 0.2.0
 -------------------
 - Implemented the ability to purge old releases after a successful deploy.

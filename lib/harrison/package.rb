@@ -23,7 +23,11 @@ module Harrison
     def remote_exec(cmd)
       ensure_remote_dir("#{remote_project_dir}/package")
 
-      super("cd #{remote_project_dir}/package && #{cmd}")
+      if @_remote_context
+        super("cd #{@_remote_context} && #{cmd}")
+      else
+        super("cd #{remote_project_dir}/package && #{cmd}")
+      end
     end
 
     def run(&block)
@@ -40,18 +44,22 @@ module Harrison
       # Fetch/clone git repo on remote host.
       remote_exec("if [ -d cached ] ; then cd cached && git fetch origin -p ; else git clone #{git_src} cached ; fi")
 
-      # Check out target commit.
-      remote_exec("cd cached && git reset --hard #{commit} && git clean -f -d")
-
       # Make a build folder of the target commit.
-      remote_exec("rm -rf #{commit} && cp -a cached #{commit}")
+      remote_exec("rm -rf #{artifact_name(commit)} && cp -a cached #{artifact_name(commit)}")
 
-      # Run user supplied build code.
-      # TODO: alter remote_exec to set directory context to commit dir?
-      super
+      # Check out target commit.
+      remote_exec("cd #{artifact_name(commit)} && git reset --hard #{commit} && git clean -f -d")
+
+      # Run user supplied build code in the context of the checked out code.
+      begin
+        @_remote_context = "#{remote_project_dir}/package/#{artifact_name(commit)}"
+        super
+      ensure
+        @_remote_context = nil
+      end
 
       # Package build folder into tgz.
-      remote_exec("rm -f #{artifact_name(commit)}.tar.gz && cd #{commit} && tar #{excludes_for_tar} -czf ../#{artifact_name(commit)}.tar.gz .")
+      remote_exec("rm -f #{artifact_name(commit)}.tar.gz && cd #{artifact_name(commit)} && tar #{excludes_for_tar} -czf ../#{artifact_name(commit)}.tar.gz .")
 
       if match = remote_regex.match(destination)
         # Copy artifact to remote destination.
@@ -65,7 +73,7 @@ module Harrison
       end
 
       if purge
-        remote_exec("cd .. && rm -rf package")
+        remote_exec("rm -rf #{artifact_name(commit)}")
       end
 
       puts "Sucessfully packaged #{commit} to #{destination}/#{artifact_name(commit)}.tar.gz"
