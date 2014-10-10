@@ -158,6 +158,66 @@ describe Harrison::Deploy do
             expect(output).to include('deployed', 'test_user', 'test_host1', '/tmp/test_artifact.tar.gz')
           end
         end
+
+        context 'when invoked via rollback' do
+          before(:each) do
+            instance.rollback = true
+          end
+
+          after(:each) do
+            instance.rollback = false
+          end
+
+          it 'should branch into the rollback specific code' do
+            expect(instance).to receive(:run_rollback).and_return(true)
+
+            instance.run
+          end
+        end
+      end
+    end
+
+    describe '#run_rollback' do
+      before(:each) do
+        instance.project = 'test_project'
+
+        @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
+        allow(instance).to receive(:ssh).and_return(@mock_ssh)
+
+        instance.instance_variable_set(:@run_block, Proc.new { |h| "block for #{h.host}" })
+      end
+
+      it 'should find the release of the previous deploy' do
+        expect(instance).to receive(:deploys).and_return([ 'deploy_1', 'deploy_2', 'deploy_3', 'deploy_4', 'deploy_5' ])
+        expect(@mock_ssh).to receive(:exec).with(/readlink deploy_4/)
+
+        capture(:stdout) do
+          instance.run_rollback
+        end
+      end
+
+      it 'should update the current symlink on each host' do
+        instance.hosts = [ 'host1', 'host2', 'host3' ]
+
+        expect(instance).to receive(:deploys).and_return([ 'deploy_1', 'deploy_2', 'deploy_3', 'deploy_4', 'deploy_5' ])
+        expect(@mock_ssh).to receive(:exec).with(/readlink deploy_4/).and_return('old_release')
+
+        expect(@mock_ssh).to receive(:exec).with(/ln .* old_release .*_ROLLBACK/).exactly(3).times
+        expect(@mock_ssh).to receive(:exec).with(/ln .*_ROLLBACK .*current/).exactly(3).times
+
+        capture(:stdout) do
+          instance.run_rollback
+        end
+      end
+
+      it 'should invoke the user block on each host' do
+        instance.hosts = [ 'host1', 'host2', 'host3' ]
+
+        output = capture(:stdout) do
+          expect { |b| instance.run(&b); instance.run_rollback }.to yield_control.exactly(3).times
+        end
+
+        expect(output).to include('host1', 'host2', 'host3')
       end
     end
 
