@@ -2,13 +2,13 @@ require 'spec_helper'
 
 describe Harrison do
   before(:all) do
-    [ :@@args, :@@packager, :@@deployer, :@@config, :@@runner ].each do |class_var|
+    [ :@@args, :@@task_runners, :@@config, :@@runner ].each do |class_var|
       Harrison.class_variable_set(class_var, nil)
     end
   end
 
   after(:each) do
-    [ :@@args, :@@packager, :@@deployer, :@@config, :@@runner ].each do |class_var|
+    [ :@@args, :@@task_runners, :@@config, :@@runner ].each do |class_var|
       Harrison.class_variable_set(class_var, nil)
     end
   end
@@ -78,21 +78,22 @@ describe Harrison do
   describe '.package' do
     before(:each) do
       Harrison.class_variable_set(:@@args, ['package'])
-      Harrison.class_variable_set(:@@runner, lambda { Harrison.class_variable_get(:@@packager) if Harrison.class_variable_defined?(:@@packager) })
+      Harrison.class_variable_set(:@@runner, lambda { Harrison.class_variable_get(:@@task_runners)[:package] if Harrison.class_variable_defined?(:@@task_runners) && Harrison.class_variable_get(:@@task_runners).has_key?(:package) })
     end
 
     it 'should yield a new Harrison::Package' do
       mock_package = double(:package, parse: true)
-      expect(Harrison::Package).to receive(:new).and_return(mock_package)
+      Harrison.class_variable_set(:@@task_runners, Hash.new)
 
+      expect(Harrison::Package).to receive(:new).and_return(mock_package)
       expect { |b| Harrison.package(&b) }.to yield_with_args(mock_package)
     end
 
     it 'should yield existing Harrison::Package if defined' do
       mock_package = double(:package, parse: true)
-      Harrison.class_variable_set(:@@packager, mock_package)
-      expect(Harrison::Package).to_not receive(:new)
+      Harrison.class_variable_set(:@@task_runners, { package: mock_package })
 
+      expect(Harrison::Package).to_not receive(:new)
       expect { |b| Harrison.package(&b) }.to yield_with_args(mock_package)
     end
   end
@@ -100,21 +101,22 @@ describe Harrison do
   describe '.deploy' do
     before(:each) do
       Harrison.class_variable_set(:@@args, ['deploy'])
-      Harrison.class_variable_set(:@@runner, lambda { Harrison.class_variable_get(:@@deployer) if Harrison.class_variable_defined?(:@@deployer) })
+      Harrison.class_variable_set(:@@runner, lambda { Harrison.class_variable_get(:@@task_runners)[:deploy] if Harrison.class_variable_defined?(:@@task_runners) && Harrison.class_variable_get(:@@task_runners).has_key?(:deploy) })
     end
 
     it 'should yield a new Harrison::Deploy' do
       mock_deploy = double(:deploy, parse: true)
-      expect(Harrison::Deploy).to receive(:new).and_return(mock_deploy)
+      Harrison.class_variable_set(:@@task_runners, Hash.new)
 
+      expect(Harrison::Deploy).to receive(:new).and_return(mock_deploy)
       expect { |b| Harrison.deploy(&b) }.to yield_with_args(mock_deploy)
     end
 
-    it 'should yield existing Harrison::Package if defined' do
+    it 'should yield existing Harrison::Deploy if defined' do
       mock_deploy = double(:deploy, parse: true)
-      Harrison.class_variable_set(:@@deployer, mock_deploy)
-      expect(Harrison::Deploy).to_not receive(:new)
+      Harrison.class_variable_set(:@@task_runners, { deploy: mock_deploy })
 
+      expect(Harrison::Deploy).to_not receive(:new)
       expect { |b| Harrison.deploy(&b) }.to yield_with_args(mock_deploy)
     end
   end

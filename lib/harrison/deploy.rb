@@ -4,6 +4,9 @@ module Harrison
     attr_accessor :host # The specific host among --hosts that we are currently working on.
     attr_accessor :release_dir
     attr_accessor :deploy_link
+    attr_accessor :rollback
+
+    alias :invoke_user_block :run
 
     def initialize(opts={})
       # Config helpers for Harrisonfile.
@@ -29,8 +32,12 @@ module Harrison
       # Preserve argv hosts if it's been passed.
       @_argv_hosts = self.hosts.dup if self.hosts
 
-      # Make sure they passed an artifact.
-      self.artifact = args[1] || abort("ERROR: You must specify the artifact to be deployed as an argument to this command.")
+      self.rollback = args[0] == 'rollback'
+
+      unless self.rollback
+        # Make sure they passed an artifact.
+        self.artifact = args[1] || abort("ERROR: You must specify the artifact to be deployed as an argument to this command.")
+      end
     end
 
     def remote_exec(cmd)
@@ -44,11 +51,14 @@ module Harrison
       self.hosts = @_argv_hosts if @_argv_hosts
 
       if !self.hosts || self.hosts.empty?
-        abort("ERROR: You must specify one or more hosts to deploy to, either in your Harrisonfile or via --hosts.")
+        abort("ERROR: You must specify one or more hosts to deploy/rollback on, either in your Harrisonfile or via --hosts.")
       end
 
       # Default base_dir.
       self.base_dir ||= '/opt'
+
+      # Branch into the rollback workflow if requested.
+      return self.run_rollback if self.rollback
 
       puts "Deploying #{artifact} for \"#{project}\" onto #{hosts.size} hosts..."
 
@@ -88,7 +98,7 @@ module Harrison
         remote_exec("ln -sfn #{deploy_link} #{remote_project_dir}/current")
 
         # Run user supplied deploy code to restart server or whatever.
-        super
+        self.invoke_user_block
 
         # Cleanup old releases if a keep value is set.
         if (self.keep)
@@ -100,6 +110,41 @@ module Harrison
       end
 
       puts "Sucessfully deployed #{artifact} to #{hosts.join(', ')}."
+    end
+
+    def run_rollback
+      puts "Rolling back \"#{project}\" to previously deployed release on #{hosts.size} hosts..."
+
+      # Find the most recent deploy on the first host.
+      begin
+        self.host = hosts[0]
+
+        last_deploy = self.deploys.sort.reverse[1]
+        self.release_dir = remote_exec("cd deploys && readlink #{last_deploy}")
+        self.deploy_link = "#{remote_project_dir}/deploys/" + Time.new.utc.strftime('%Y-%m-%d_%H%M%S') + "_ROLLBACK"
+      ensure
+        self.host = nil
+      end
+
+      hosts.each do |h|
+        self.host = h
+
+        ensure_remote_dir("#{remote_project_dir}/deploys", self.ssh)
+        ensure_remote_dir("#{remote_project_dir}/releases", self.ssh)
+
+        # Symlink a new deploy to this release.
+        remote_exec("ln -s #{release_dir} #{deploy_link}")
+
+        # Symlink current to new deploy.
+        remote_exec("ln -sfn #{deploy_link} #{remote_project_dir}/current")
+
+        # Run user supplied deploy code to restart server or whatever.
+        self.invoke_user_block
+
+        close(self.host)
+      end
+
+      puts "Sucessfully rolled back on #{hosts.join(', ')}."
     end
 
     def cleanup_deploys(limit)
@@ -147,7 +192,7 @@ module Harrison
       "#{base_dir}/#{project}"
     end
 
-    # Return a sorted list of deploys, unsorted.
+    # Return a list of deploys, unsorted.
     def deploys
       remote_exec("cd deploys && ls -1").split("\n")
     end

@@ -10,6 +10,10 @@ module Harrison
 
   def self.invoke(args)
     @@args = args.freeze
+    @@task_runners = {
+      package: nil,
+      deploy: nil,
+    }
 
     abort("No command given. Run with --help for valid commands and options.") if @@args.empty?
 
@@ -17,12 +21,10 @@ module Harrison
     Harrison::Base.new.parse(@@args.dup) and exit(0) if @@args[0] == '--help'
 
     # Find Harrisonfile.
-    hf = find_harrisonfile
-    abort("ERROR: Could not find a Harrisonfile in this directory or any ancestor.") if hf.nil?
+    hf = find_harrisonfile || abort("ERROR: Could not find a Harrisonfile in this directory or any ancestor.")
 
     # Find the class to handle command.
-    @@runner = find_runner(@@args[0])
-    abort("ERROR: Unrecognized command \"#{@@args[0]}\".") unless @@runner
+    @@runner = find_runner(@@args[0]) || abort("ERROR: Unrecognized command \"#{@@args[0]}\".")
 
     # Eval the Harrisonfile.
     eval_script(hf)
@@ -46,21 +48,21 @@ module Harrison
   end
 
   def self.package(opts={})
-    @@packager ||= Harrison::Package.new(opts)
+    @@task_runners[:package] ||= Harrison::Package.new(opts)
 
     # Parse options if this is the target command.
-    @@packager.parse(@@args.dup) if @@runner && @@runner.call == @@packager
+    @@task_runners[:package].parse(@@args.dup) if @@runner && @@runner.call == @@task_runners[:package]
 
-    yield @@packager
+    yield @@task_runners[:package]
   end
 
   def self.deploy(opts={})
-    @@deployer ||= Harrison::Deploy.new(opts)
+    @@task_runners[:deploy] ||= Harrison::Deploy.new(opts)
 
     # Parse options if this is the target command.
-    @@deployer.parse(@@args.dup) if @@runner && @@runner.call == @@deployer
+    @@task_runners[:deploy].parse(@@args.dup) if @@runner && @@runner.call == @@task_runners[:deploy]
 
-    yield @@deployer
+    yield @@task_runners[:deploy]
   end
 
 
@@ -83,9 +85,8 @@ module Harrison
   end
 
   def self.find_runner(command)
-    case command.downcase
-      when 'package' then lambda { @@packager if self.class_variable_defined?(:@@packager) }
-      when 'deploy' then lambda { @@deployer if self.class_variable_defined?(:@@deployer) }
-    end
+    command = 'deploy' if command == 'rollback'
+
+    lambda { @@task_runners[command.to_sym] } if @@task_runners.has_key?(command.to_sym)
   end
 end
