@@ -1,6 +1,9 @@
 require 'bundler/setup'
 Bundler.setup
 
+require 'simplecov'
+SimpleCov.start
+
 require 'harrison'
 
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
