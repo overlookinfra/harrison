@@ -5,6 +5,7 @@ require "harrison/config"
 require "harrison/base"
 require "harrison/package"
 require "harrison/deploy"
+require "harrison/deploy/phase"
 
 module Harrison
 
@@ -32,6 +33,8 @@ module Harrison
     # Invoke command and cleanup afterwards.
     begin
       @@runner.call.run
+    rescue => e
+      raise e
     ensure
       @@runner.call.close
     end

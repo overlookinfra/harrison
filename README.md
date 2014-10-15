@@ -49,20 +49,73 @@ Harrison.package do |h|
 end
 
 Harrison.deploy do |h|
-  h.hosts = [ 'util-server-01.example.com', 'app-server-01.example.com', 'app-server-02.example.com' ]
   h.user = 'jesse'
   h.base_dir = '/opt'
 
-  # Run block will be invoked once for each host after new code is in place.
-  h.run do |h|
-    # You can interrogate h.host to see what host you are currently running on.
-    if h.host =~ /util/
-      # Do something on the util box.
-    else
-      puts "Reloading Unicorn on #{h.host}..."
-      h.remote_exec("sudo -- /etc/init.d/unicorn_#{h.project} reload")
+  h.hosts = [ 'util-server-01.example.com', 'app-server-01.example.com', 'app-server-02.example.com' ]
+
+  # How many deploys to keep around after a successful new deploy.
+  h.keep = 5
+
+  # Built in phases:
+  #  - :upload    Uploads your artifact to the host.
+  #  - :extract   Extracts your artifact into a release folder.
+  #  - :link      Creates a new deploy symlink pointed to the new release.
+  #  - :cleanup   Removes deploys older than the --keep option, if set.
+  #
+  # You can override these phases by adding a phase with the same name below.
+  #
+  # You will probably want to add one or more phases to actually do restart
+  # your application in an appropriate way.
+  #
+  # The built in "rollback" action will run your configured phases except
+  # that it will not run any phases named "upload", "extract", or "cleanup".
+  # Also, h.rollback can be inspected to distinguish a "rollback" action from
+  # a normal "deploy" action.
+
+  h.add_phase :migrate do |phase|
+    # Only run this phase on util boxes.
+    phase.add_condition { |h| h.host =~ /util/ }
+
+    phase.on_run do |h|
+      # Make the "current" symlink point to the new deploy.
+      h.update_current_symlink
+
+      h.remote_exec(%Q(bash -l -c "bundle exec rake db:migrate"))
+    end
+
+    phase.on_fail do |h|
+      # Make the "current" symlink point back to the previously active deploy.
+      h.revert_current_symlink
+
+      h.remote_exec(%Q(bash -l -c "bundle exec rake db:migrate"))
     end
   end
+
+  h.add_phase :restart do |phase|
+    # Only run this phase on non-util boxes.
+    phase.add_condition { |h| h.host !~ /util/ }
+
+    phase.on_run do |h|
+      # Make the "current" symlink point to the new deploy.
+      h.update_current_symlink
+
+      h.remote_exec("touch #{h.current_symlink}/restart.txt")
+    end
+
+    phase.on_fail do |h|
+      # Make the "current" symlink point back to the previously active deploy.
+      h.revert_current_symlink
+
+      h.remote_exec("touch #{h.current_symlink}/restart.txt")
+    end
+  end
+
+  # Define what phases to run and in what order on each host. Each
+  # phase will need to complete on every host before moving on to the
+  # next phase. If a phase fails on a host, all completed phases/hosts
+  # will have the "on_fail" block executed in reverse order.
+  h.phases = [ :upload, :extract, :link, :migrate, :restart, :cleanup ]
 end
 ```
 

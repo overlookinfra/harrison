@@ -22,6 +22,10 @@ describe Harrison::Deploy do
 
       expect(instance.instance_variable_get('@options')).to include(testopt: 'foo')
     end
+
+    it 'should set up default phases' do
+      expect(instance.instance_variable_get(:@_phases)).to_not be_empty
+    end
   end
 
   describe 'instance methods' do
@@ -41,19 +45,112 @@ describe Harrison::Deploy do
       end
     end
 
+    describe '#add_phase' do
+      before(:each) do
+        allow(Harrison::Deploy::Phase).to receive(:new).with(anything)
+      end
+
+      it 'should instantiate a new Phase object with the given name' do
+        expect(Harrison::Deploy::Phase).to receive(:new).with(:test)
+
+        instance.add_phase(:test)
+      end
+
+      it 'should pass a given block to the Phase object constructor' do
+        @mock_phase = double(:phase)
+
+        expect(Harrison::Deploy::Phase).to receive(:new).with(:test).and_yield(@mock_phase)
+        expect(@mock_phase).to receive(:in_block)
+
+        instance.add_phase :test do |p|
+          p.in_block
+        end
+      end
+    end
+
     describe '#remote_exec' do
       before(:each) do
+        instance.base_dir = '/opt'
+        instance.project = 'test_project'
+
         @mock_ssh = double(:ssh)
         expect(instance).to receive(:ssh).and_return(@mock_ssh)
       end
 
       it 'should prepend project dir onto passed command' do
-        instance.base_dir = '/opt'
-        instance.project = 'test_project'
-
         expect(@mock_ssh).to receive(:exec).with("cd /opt/test_project && test_command").and_return('')
 
         instance.remote_exec("test_command")
+      end
+    end
+
+    describe '#current_symlink' do
+      it 'starts at base_dir' do
+        expect(instance.current_symlink).to match(/^#{instance.base_dir}/)
+      end
+
+      it 'is not just base_dir' do
+        expect(instance.current_symlink).to_not equal(instance.base_dir)
+      end
+    end
+
+    describe '#update_current_symlink' do
+      before(:each) do
+        instance.deploy_link = 'new_deploy'
+
+        allow(instance).to receive(:remote_exec).with(/^ln/)
+      end
+
+      context 'current_symlink already exists' do
+        before(:each) do
+          expect(instance).to receive(:remote_exec).with(/readlink/).and_return('old_link_target')
+        end
+
+        it 'should store old symlink target' do
+          instance.update_current_symlink
+
+          expect(instance.instance_variable_get(:@_old_current)).to_not be_nil
+        end
+
+        it 'should replace existing symlink' do
+          expect(instance).to receive(:remote_exec).with(/^ln .* #{instance.deploy_link}/)
+
+          instance.update_current_symlink
+        end
+      end
+
+      context 'current_symlink does not exist yet' do
+        before(:each) do
+          expect(instance).to receive(:remote_exec).with(/readlink/).and_return('')
+        end
+
+        it 'should not store old symlink target' do
+          instance.update_current_symlink
+
+          expect(instance.instance_variable_get(:@_old_current)).to be_nil
+        end
+
+        it 'should create symlink' do
+          expect(instance).to receive(:remote_exec).with(/^ln .* #{instance.deploy_link}/)
+
+          instance.update_current_symlink
+        end
+      end
+    end
+
+    describe '#revert_current_symlink' do
+      it 'should set link back to old target if old target is set' do
+        instance.instance_variable_set(:@_old_current, 'old_link_target')
+
+        expect(instance).to receive(:remote_exec).with(/^ln .* old_link_target/)
+
+        instance.revert_current_symlink
+      end
+
+      it 'should be a no-op if old target is not set' do
+        expect(instance).to_not receive(:remote_exec)
+
+        instance.revert_current_symlink
       end
     end
 
@@ -61,163 +158,138 @@ describe Harrison::Deploy do
       before(:each) do
         instance.artifact = 'test_artifact.tar.gz'
         instance.project = 'test_project'
-      end
-
-      context 'when passed a block' do
-        it 'should store the block' do
-          test_block = Proc.new { |test| "block_output" }
-          instance.run(&test_block)
-
-          expect(instance.instance_variable_get("@run_block")).to be test_block
-        end
-      end
-
-      context 'when not passed a block' do
-        before(:each) do
-          @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
-          allow(instance).to receive(:ssh).and_return(@mock_ssh)
-
-          instance.instance_variable_set(:@run_block, Proc.new { |h| "block for #{h.host}" })
-        end
-
-        it 'should use hosts from --hosts if passed' do
-          instance.instance_variable_set(:@_argv_hosts, [ 'argv_host1', 'argv_host2' ])
-
-          output = capture(:stdout) do
-            instance.run
-          end
-
-          expect(instance.hosts).to eq([ 'argv_host1', 'argv_host2' ])
-          expect(output).to include('argv_host1', 'argv_host2')
-          expect(output).to_not include('hf_host')
-        end
-
-        it 'should use hosts from Harrisonfile if --hosts not passed' do
-          output = capture(:stdout) do
-            instance.run
-          end
-
-          expect(instance.hosts).to eq([ 'hf_host' ])
-          expect(output).to include('hf_host')
-        end
-
-        it 'should require hosts to be set somehow' do
-          instance.hosts = nil
-
-          output = capture(:stderr) do
-            expect(lambda { instance.run }).to exit_with_code(1)
-          end
-
-          expect(output).to include('must', 'specify', 'hosts')
-        end
-
-        it 'should invoke the previously stored block once for each host' do
-          instance.hosts = [ 'host1', 'host2', 'host3' ]
-
-          output = capture(:stdout) do
-            expect { |b| instance.run(&b); instance.run }.to yield_control.exactly(3).times
-          end
-
-          expect(output).to include('host1', 'host2', 'host3')
-        end
-
-        it 'should clean up old releases if passed a --keep option' do
-          instance.keep = 3
-
-          expect(instance).to receive(:cleanup_deploys).with(3)
-          expect(instance).to receive(:cleanup_releases)
-
-          output = capture(:stdout) do
-            instance.run
-          end
-        end
-
-        context 'when deploying from a remote artifact source' do
-          before(:each) do
-            instance.artifact = 'test_user@test_host1:/tmp/test_artifact.tar.gz'
-          end
-
-          it 'should invoke scp on the remote host' do
-            allow(instance).to receive(:remote_exec).and_return('')
-            expect(instance).to receive(:remote_exec).with(/scp test_user@test_host1:\/tmp\/test_artifact.tar.gz/).and_return('')
-
-            output = capture(:stdout) do
-              instance.run
-            end
-
-            expect(output).to include('deployed', 'test_user', 'test_host1', '/tmp/test_artifact.tar.gz')
-          end
-
-          it 'should not invoke Harrison::SSH.upload' do
-            expect(@mock_ssh).not_to receive(:upload)
-
-            output = capture(:stdout) do
-              instance.run
-            end
-
-            expect(output).to include('deployed', 'test_user', 'test_host1', '/tmp/test_artifact.tar.gz')
-          end
-        end
-
-        context 'when invoked via rollback' do
-          before(:each) do
-            instance.rollback = true
-          end
-
-          after(:each) do
-            instance.rollback = false
-          end
-
-          it 'should branch into the rollback specific code' do
-            expect(instance).to receive(:run_rollback).and_return(true)
-
-            instance.run
-          end
-        end
-      end
-    end
-
-    describe '#run_rollback' do
-      before(:each) do
-        instance.project = 'test_project'
 
         @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
         allow(instance).to receive(:ssh).and_return(@mock_ssh)
-
-        instance.instance_variable_set(:@run_block, Proc.new { |h| "block for #{h.host}" })
       end
 
-      it 'should find the release of the previous deploy' do
-        expect(instance).to receive(:deploys).and_return([ 'deploy_1', 'deploy_2', 'deploy_3', 'deploy_4', 'deploy_5' ])
-        expect(@mock_ssh).to receive(:exec).with(/readlink deploy_4/)
-
-        capture(:stdout) do
-          instance.run_rollback
-        end
-      end
-
-      it 'should update the current symlink on each host' do
-        instance.hosts = [ 'host1', 'host2', 'host3' ]
-
-        expect(instance).to receive(:deploys).and_return([ 'deploy_1', 'deploy_2', 'deploy_3', 'deploy_4', 'deploy_5' ])
-        expect(@mock_ssh).to receive(:exec).with(/readlink deploy_4/).and_return('old_release')
-
-        expect(@mock_ssh).to receive(:exec).with(/ln .* old_release .*_ROLLBACK/).exactly(3).times
-        expect(@mock_ssh).to receive(:exec).with(/ln .*_ROLLBACK .*current/).exactly(3).times
-
-        capture(:stdout) do
-          instance.run_rollback
-        end
-      end
-
-      it 'should invoke the user block on each host' do
-        instance.hosts = [ 'host1', 'host2', 'host3' ]
+      it 'should use hosts from --hosts if passed' do
+        instance.instance_variable_set(:@_argv_hosts, [ 'argv_host1', 'argv_host2' ])
 
         output = capture(:stdout) do
-          expect { |b| instance.run(&b); instance.run_rollback }.to yield_control.exactly(3).times
+          instance.run
+        end
+
+        expect(instance.hosts).to eq([ 'argv_host1', 'argv_host2' ])
+        expect(output).to include('argv_host1', 'argv_host2')
+        expect(output).to_not include('hf_host')
+      end
+
+      it 'should use hosts from Harrisonfile if --hosts not passed' do
+        output = capture(:stdout) do
+          instance.run
+        end
+
+        expect(instance.hosts).to eq([ 'hf_host' ])
+        expect(output).to include('hf_host')
+      end
+
+      it 'should require hosts to be set somehow' do
+        instance.hosts = nil
+
+        output = capture(:stderr) do
+          expect(lambda { instance.run }).to exit_with_code(1)
+        end
+
+        expect(output).to include('must', 'specify', 'hosts')
+      end
+
+      it 'should run the specified phases once for each host' do
+        instance.hosts = [ 'host1', 'host2', 'host3' ]
+
+        mock_phase = double(:phase, matches_context?: true)
+        expect(Harrison::Deploy::Phase).to receive(:new).with(:test).and_return(mock_phase)
+        instance.add_phase :test
+        instance.phases = [ :test ]
+
+        expect(mock_phase).to receive(:_run).exactly(3).times
+
+        output = capture(:stdout) do
+          instance.run
         end
 
         expect(output).to include('host1', 'host2', 'host3')
+      end
+
+      context 'when a deployment phase fails on a host' do
+        before(:each) do
+          @upload   = double(:phase, name: :upload, matches_context?: true, _run: true, _fail: true)
+          @extract  = double(:phase, name: :extract, matches_context?: true, _run: true, _fail: true)
+          @link     = double(:phase, name: :link, matches_context?: true)
+
+          allow(@link).to receive(:_run).and_throw(:failure, true)
+
+          instance.instance_variable_set(:@_phases, {
+            upload:   @upload,
+            extract:  @extract,
+            link:     @link,
+          })
+
+          instance.phases = [ :upload, :extract, :link ]
+
+          instance.hosts = [ 'host1', 'host2', 'host3' ]
+        end
+
+        it "should invoke on_fail block for completed phases on each host" do
+          expect(@extract).to receive(:_fail).exactly(3).times.ordered
+          expect(@upload).to receive(:_fail).exactly(3).times.ordered
+
+          capture([ :stdout, :stderr ]) do
+            expect(lambda { instance.run }).to exit_with_code(1)
+          end
+        end
+
+        it "should invoke on_fail block on each host in reverse order" do
+          expect(@extract).to receive(:_fail) { |context| expect(context.host).to eq('host3') }.ordered
+          expect(@extract).to receive(:_fail) { |context| expect(context.host).to eq('host2') }.ordered
+          expect(@extract).to receive(:_fail) { |context| expect(context.host).to eq('host1') }.ordered
+
+          capture([ :stdout, :stderr ]) do
+            expect(lambda { instance.run }).to exit_with_code(1)
+          end
+        end
+      end
+
+      context 'when invoked via rollback' do
+        before(:each) do
+          instance.rollback = true
+
+          instance.project = 'test_project'
+
+          @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
+          allow(instance).to receive(:ssh).and_return(@mock_ssh)
+        end
+
+        it 'should find the release of the previous deploy' do
+          expect(instance).to receive(:deploys).and_return([ 'deploy_1', 'deploy_2', 'deploy_3', 'deploy_4', 'deploy_5' ])
+          expect(@mock_ssh).to receive(:exec).with(/readlink .* deploy_4/)
+
+          capture(:stdout) do
+            instance.run
+          end
+        end
+
+        it 'should not run :upload, :extract, or :cleanup phases' do
+          expect(instance).to receive(:deploys).and_return([ 'deploy_1', 'deploy_2', 'deploy_3', 'deploy_4', 'deploy_5' ])
+          expect(@mock_ssh).to receive(:exec).with(/readlink .* deploy_4/).and_return('old_release')
+
+          disabled_phase = double(:phase)
+          expect(disabled_phase).to_not receive(:_run)
+
+          enabled_phase = double(:phase, matches_context?: true)
+          expect(enabled_phase).to receive(:_run)
+
+          instance.instance_variable_set(:@_phases, {
+            upload:   disabled_phase,
+            extract:  disabled_phase,
+            link:     enabled_phase,
+            cleanup:  disabled_phase,
+          })
+
+          capture(:stdout) do
+            instance.run
+          end
+        end
       end
     end
 
@@ -280,6 +352,20 @@ describe Harrison::Deploy do
   end
 
   describe 'protected methods' do
+    describe '#add_default_phases' do
+      it 'should add each default phase' do
+        # Trigger constructor invocations so we can only count new invocation below.
+        instance
+
+        expect(Harrison::Deploy::Phase).to receive(:new).with(:upload)
+        expect(Harrison::Deploy::Phase).to receive(:new).with(:extract)
+        expect(Harrison::Deploy::Phase).to receive(:new).with(:link)
+        expect(Harrison::Deploy::Phase).to receive(:new).with(:cleanup)
+
+        instance.send(:add_default_phases)
+      end
+    end
+
     describe '#ssh' do
       it 'should open a new SSH connection to self.host' do
         mock_ssh = double(:ssh)
@@ -373,6 +459,149 @@ describe Harrison::Deploy do
         active_releases = instance.send(:active_releases)
 
         expect(active_releases).to include('release_3')
+      end
+    end
+  end
+
+  describe 'default phases' do
+    before(:each) do
+      instance.artifact = '/tmp/test_artifact.tar.gz'
+
+      @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
+      allow(instance).to receive(:ssh).and_return(@mock_ssh)
+    end
+
+    describe 'upload' do
+      before(:each) do
+        @phase = instance.instance_variable_get(:@_phases)[:upload]
+      end
+
+      describe 'on_run' do
+        context 'when deploying from a local artifact' do
+          it 'should invoke Harrison::SSH.upload' do
+            expect(@mock_ssh).to receive(:upload).with(/test_artifact\.tar\.gz/, anything)
+
+            capture(:stdout) do
+              @phase._run(instance)
+            end
+          end
+        end
+
+        context 'when deploying from a remote artifact' do
+          before(:each) do
+            instance.artifact = 'test_user@test_host1:/tmp/test_artifact.tar.gz'
+          end
+
+          it 'should invoke scp on the remote host' do
+            allow(instance).to receive(:remote_exec).and_return('')
+            expect(instance).to receive(:remote_exec).with(/scp test_user@test_host1:\/tmp\/test_artifact.tar.gz/).and_return('')
+
+            capture(:stdout) do
+              @phase._run(instance)
+            end
+          end
+
+          it 'should not invoke Harrison::SSH.upload' do
+            expect(@mock_ssh).not_to receive(:upload)
+
+            capture(:stdout) do
+              @phase._run(instance)
+            end
+          end
+        end
+      end
+
+      describe 'on_fail' do
+        it 'should remove uploaded artifact' do
+          expect(instance).to receive(:remote_exec).with(/rm.*test_artifact\.tar\.gz/)
+
+          capture(:stdout) do
+            @phase._fail(instance)
+          end
+        end
+      end
+    end
+
+    describe 'extract' do
+      before(:each) do
+        @phase = instance.instance_variable_get(:@_phases)[:extract]
+      end
+
+      describe 'on_run' do
+        it 'should untar the artifact and then remove it' do
+          allow(instance).to receive(:remote_exec)
+          expect(instance).to receive(:remote_exec).with(/tar.*test_artifact\.tar\.gz/).ordered
+          expect(instance).to receive(:remote_exec).with(/rm.*test_artifact\.tar\.gz/).ordered
+
+          capture(:stdout) do
+            @phase._run(instance)
+          end
+        end
+      end
+
+      describe 'on_fail' do
+        it 'should remove the extracted release' do
+          expect(instance).to receive(:remote_exec).with(/rm.*#{instance.release_dir}/)
+
+          capture(:stdout) do
+            @phase._fail(instance)
+          end
+        end
+      end
+    end
+
+    describe 'link' do
+      before(:each) do
+        @phase = instance.instance_variable_get(:@_phases)[:link]
+      end
+
+      describe 'on_run' do
+        it 'should create a new deploy link' do
+          expect(instance).to receive(:remote_exec).with(/ln.*#{instance.release_dir}.*#{instance.deploy_link}/)
+
+          capture(:stdout) do
+            @phase._run(instance)
+          end
+        end
+      end
+
+      describe 'on_fail' do
+        it 'should remove deploy link' do
+          expect(instance).to receive(:remote_exec).with(/rm.*#{instance.deploy_link}/)
+
+          capture(:stdout) do
+            @phase._fail(instance)
+          end
+        end
+      end
+    end
+
+    describe 'cleanup' do
+      before(:each) do
+        @phase = instance.instance_variable_get(:@_phases)[:cleanup]
+      end
+
+      describe 'on_run' do
+        it 'should clean up old releases if passed a --keep option' do
+          instance.keep = 3
+
+          expect(instance).to receive(:cleanup_deploys).with(3)
+          expect(instance).to receive(:cleanup_releases)
+
+          capture(:stdout) do
+            @phase._run(instance)
+          end
+        end
+      end
+
+      describe 'on_fail' do
+        it 'should not do anything' do
+          expect(instance).to_not receive(:remote_exec)
+
+          capture(:stdout) do
+            @phase._fail(instance)
+          end
+        end
       end
     end
   end

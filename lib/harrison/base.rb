@@ -34,14 +34,22 @@ module Harrison
 
     def exec(cmd)
       result = `#{cmd}`
-      abort("ERROR: Unable to execute local command: \"#{cmd}\"") if !$?.success? || result.nil?
-      result.strip
+
+      if ($?.success? && result)
+        result.strip
+      else
+        throw :failure, true
+      end
     end
 
     def remote_exec(cmd)
       result = ssh.exec(cmd)
-      abort("ERROR: Unable to execute remote command: \"#{cmd}\"") if result.nil?
-      result.strip
+
+      if result
+        result.strip
+      else
+        throw :failure, true
+      end
     end
 
     def parse(args)
@@ -97,7 +105,7 @@ module Harrison
     end
 
     def ensure_remote_dir(dir, with_ssh = nil)
-      with_ssh = ssh if with_ssh.nil?
+      with_ssh ||= ssh
       host = with_ssh.host
 
       @_ensured_remote ||= {}
