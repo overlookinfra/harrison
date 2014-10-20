@@ -43,12 +43,8 @@ describe Harrison::Base do
         expect(instance.exec('echo "foo"')).to eq('foo')
       end
 
-      it 'should complain if command returns non-zero' do
-        output = capture(:stderr) do
-          expect(lambda { instance.exec('cat noexist 2>/dev/null') }).to exit_with_code(1)
-        end
-
-        expect(output).to include('unable', 'execute', 'local', 'command')
+      it 'should throw :failure if command returns non-zero' do
+        expect(lambda { instance.exec('cat noexist 2>/dev/null') }).to throw_symbol(:failure)
       end
     end
 
@@ -64,14 +60,9 @@ describe Harrison::Base do
         expect(instance.remote_exec('remote exec')).to eq('remote_exec_return')
       end
 
-      it 'should complain if command returns nil' do
+      it 'should throw :failure if command returns nil' do
         expect(@mock_ssh).to receive(:exec).and_return(nil)
-
-        output = capture(:stderr) do
-          expect(lambda { instance.remote_exec('remote exec fail') }).to exit_with_code(1)
-        end
-
-        expect(output).to include('unable', 'execute', 'remote', 'command')
+        expect(lambda { instance.remote_exec('remote exec fail') }).to throw_symbol(:failure)
       end
     end
 

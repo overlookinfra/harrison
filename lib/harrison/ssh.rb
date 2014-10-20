@@ -14,26 +14,32 @@ module Harrison
     end
 
     def exec(command)
-      puts "INFO (ssh-exec #{desc}): #{command}" if Harrison::DEBUG
+      puts "[#{desc}] INFO: ssh-exec #{command}" if Harrison::DEBUG
 
       result = invoke(@conn, command)
 
       if Harrison::DEBUG || result[:status] != 0
-        warn "STDERR (ssh-exec #{desc}): #{result[:stderr]}" unless result[:stderr].empty?
-        warn "STDOUT (ssh-exec #{desc}): #{result[:stdout]}" unless result[:stdout].empty?
+        warn "[#{desc}] STDERR: #{result[:stderr]}" unless result[:stderr].empty?
+        warn "[#{desc}] STDOUT: #{result[:stdout]}" unless result[:stdout].empty?
       end
 
       (result[:status] == 0) ? result[:stdout] : nil
     end
 
     def download(remote_path, local_path)
-      puts "INFO (scp-down #{desc}): #{local_path} <<< #{remote_path}" if Harrison::DEBUG
+      puts "[#{desc}] INFO: scp-down #{local_path} <<< #{remote_path}" if Harrison::DEBUG
+
       @conn.scp.download!(remote_path, local_path)
+
+      return true
     end
 
     def upload(local_path, remote_path)
-      puts "INFO (scp-up #{desc}): #{local_path} >>> #{remote_path}" if Harrison::DEBUG
+      puts "[#{desc}] INFO: scp-up #{local_path} >>> #{remote_path}" if Harrison::DEBUG
+
       @conn.scp.upload!(local_path, remote_path)
+
+      return true
     end
 
     def close
@@ -68,7 +74,7 @@ module Harrison
 
       conn.open_channel do |channel|
         channel.exec(cmd) do |ch, success|
-          warn "Couldn't execute command (ssh.channel.exec) on remote host: #{cmd}" unless success
+          warn "[#{conn.host}] Couldn't execute command (ssh.channel.exec): #{cmd}" unless success
 
           channel.on_data do |ch,data|
             stdout_data += data

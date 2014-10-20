@@ -4,7 +4,9 @@ module Harrison
     attr_accessor :host # The specific host among --hosts that we are currently working on.
     attr_accessor :release_dir
     attr_accessor :deploy_link
+
     attr_accessor :rollback
+    attr_accessor :phases
 
     alias :invoke_user_block :run
 
@@ -24,6 +26,8 @@ module Harrison
       ]
 
       super(arg_opts, opts)
+
+      self.add_default_phases
     end
 
     def parse(args)
@@ -40,111 +44,112 @@ module Harrison
       end
     end
 
+    def add_phase(name, &block)
+      @_phases ||= Hash.new
+
+      @_phases[name] = Harrison::Deploy::Phase.new(name, &block)
+    end
+
     def remote_exec(cmd)
       super("cd #{remote_project_dir} && #{cmd}")
     end
 
-    def run(&block)
-      return super if block_given?
+    def current_symlink
+      "#{self.remote_project_dir}/current"
+    end
 
+    def update_current_symlink
+      @_old_current = self.remote_exec("if [ -L #{current_symlink} ]; then readlink -vn #{current_symlink}; fi")
+      @_old_current = nil if @_old_current.empty?
+
+      # Symlink current to new deploy.
+      self.remote_exec("ln -sfn #{self.deploy_link} #{self.current_symlink}")
+    end
+
+    def revert_current_symlink
+      # Restore current symlink to previous if set.
+      if @_old_current
+        self.remote_exec("ln -sfn #{@_old_current} #{self.current_symlink}")
+      end
+    end
+
+    def run
       # Override Harrisonfile hosts if it was passed on argv.
       self.hosts = @_argv_hosts if @_argv_hosts
 
+      # Require at least one host.
       if !self.hosts || self.hosts.empty?
         abort("ERROR: You must specify one or more hosts to deploy/rollback on, either in your Harrisonfile or via --hosts.")
       end
 
+      # Default to just built in deployment phases.
+      self.phases ||= [ :upload, :extract, :link, :cleanup ]
+
       # Default base_dir.
       self.base_dir ||= '/opt'
 
-      # Branch into the rollback workflow if requested.
-      return self.run_rollback if self.rollback
+      if self.rollback
+        puts "Rolling back \"#{project}\" to previously deployed release on #{hosts.size} hosts...\n\n"
 
-      puts "Deploying #{artifact} for \"#{project}\" onto #{hosts.size} hosts..."
+        # Find the prior deploy on the first host.
+        self.host = hosts[0]
+        last_deploy = self.deploys.sort.reverse[1] || abort("ERROR: No previous deploy to rollback to.")
+        self.release_dir = remote_exec("cd deploys && readlink -vn #{last_deploy}")
 
-      self.release_dir = "#{remote_project_dir}/releases/" + File.basename(artifact, '.tar.gz')
+        # No need to upload or extract for rollback.
+        self.phases.delete(:upload)
+        self.phases.delete(:extract)
+
+        # Don't cleanup old deploys either.
+        self.phases.delete(:cleanup)
+      else
+        puts "Deploying #{artifact} for \"#{project}\" onto #{hosts.size} hosts...\n\n"
+        self.release_dir = "#{remote_project_dir}/releases/" + File.basename(artifact, '.tar.gz')
+      end
+
       self.deploy_link = "#{remote_project_dir}/deploys/" + Time.new.utc.strftime('%Y-%m-%d_%H%M%S')
 
-      hosts.each do |h|
-        self.host = h
+      progress_stack = []
 
-        ensure_remote_dir("#{remote_project_dir}/deploys", self.ssh)
-        ensure_remote_dir("#{remote_project_dir}/releases", self.ssh)
+      failed = catch(:failure) do
+        self.phases.each do |phase_name|
+          phase = @_phases[phase_name] || abort("ERROR: Could not resolve \"#{phase_name}\" as a deployment phase.")
 
-        # Make folder for release or bail if it already exists.
-        remote_exec("mkdir #{release_dir}")
+          self.hosts.each do |host|
+            self.host = host
 
-        if match = remote_regex.match(artifact)
-          # Copy artifact to host from remote source.
-          src_user, src_host, src_path = match.captures
-          src_user ||= self.user
+            phase._run(self)
 
-          remote_exec("scp #{src_user}@#{src_host}:#{src_path} #{remote_project_dir}/releases/")
+            # Track what phases we have completed on which hosts, in a stack.
+            progress_stack << { host: host, phase: phase_name }
+          end
+        end
+
+        # We want "failed" to be false if nothing was caught.
+        false
+      end
+
+      if failed
+        print "\n"
+
+        progress_stack.reverse.each do |progress|
+          self.host = progress[:host]
+          phase = @_phases[progress[:phase]]
+
+          # Don't let failures interrupt the rest of the process.
+          catch(:failure) do
+            phase._fail(self)
+          end
+        end
+
+        abort "\nDeployment failed, previously completed deployment actions have been reverted."
+      else
+        if self.rollback
+          puts "\nSucessfully rolled back #{project} on #{hosts.join(', ')}."
         else
-          # Upload artifact to host.
-          upload(artifact, "#{remote_project_dir}/releases/")
+          puts "\nSucessfully deployed #{artifact} to #{hosts.join(', ')}."
         end
-
-        # Unpack.
-        remote_exec("cd #{release_dir} && tar -xzf ../#{File.basename(artifact)}")
-
-        # Clean up artifact.
-        remote_exec("rm -f #{remote_project_dir}/releases/#{File.basename(artifact)}")
-
-        # Symlink a new deploy to this release.
-        remote_exec("ln -s #{release_dir} #{deploy_link}")
-
-        # Symlink current to new deploy.
-        remote_exec("ln -sfn #{deploy_link} #{remote_project_dir}/current")
-
-        # Run user supplied deploy code to restart server or whatever.
-        self.invoke_user_block
-
-        # Cleanup old releases if a keep value is set.
-        if (self.keep)
-          cleanup_deploys(self.keep)
-          cleanup_releases
-        end
-
-        close(self.host)
       end
-
-      puts "Sucessfully deployed #{artifact} to #{hosts.join(', ')}."
-    end
-
-    def run_rollback
-      puts "Rolling back \"#{project}\" to previously deployed release on #{hosts.size} hosts..."
-
-      # Find the most recent deploy on the first host.
-      begin
-        self.host = hosts[0]
-
-        last_deploy = self.deploys.sort.reverse[1]
-        self.release_dir = remote_exec("cd deploys && readlink #{last_deploy}")
-        self.deploy_link = "#{remote_project_dir}/deploys/" + Time.new.utc.strftime('%Y-%m-%d_%H%M%S') + "_ROLLBACK"
-      ensure
-        self.host = nil
-      end
-
-      hosts.each do |h|
-        self.host = h
-
-        ensure_remote_dir("#{remote_project_dir}/deploys", self.ssh)
-        ensure_remote_dir("#{remote_project_dir}/releases", self.ssh)
-
-        # Symlink a new deploy to this release.
-        remote_exec("ln -s #{release_dir} #{deploy_link}")
-
-        # Symlink current to new deploy.
-        remote_exec("ln -sfn #{deploy_link} #{remote_project_dir}/current")
-
-        # Run user supplied deploy code to restart server or whatever.
-        self.invoke_user_block
-
-        close(self.host)
-      end
-
-      puts "Sucessfully rolled back on #{hosts.join(', ')}."
     end
 
     def cleanup_deploys(limit)
@@ -152,7 +157,7 @@ module Harrison
       purge_deploys = self.deploys.sort.reverse.slice(limit..-1) || []
 
       if purge_deploys.size > 0
-        puts "Purging #{purge_deploys.size} old deploys on #{self.host}, keeping #{limit}..."
+        puts "[#{self.host}]   Purging #{purge_deploys.size} old deploys. (Keeping #{limit}...)"
 
         purge_deploys.each do |stale_deploy|
           remote_exec("cd deploys && rm -f #{stale_deploy}")
@@ -182,6 +187,74 @@ module Harrison
     end
 
     protected
+
+    def add_default_phases
+      self.add_phase :upload do |phase|
+        phase.on_run do |h|
+          h.ensure_remote_dir("#{h.remote_project_dir}/deploys")
+          h.ensure_remote_dir("#{h.remote_project_dir}/releases")
+
+          # Remove if it already exists.
+          # TODO: if --force only?
+          h.remote_exec("rm -f #{h.remote_project_dir}/releases/#{File.basename(h.artifact)}")
+
+          if match = h.remote_regex.match(h.artifact)
+            # Copy artifact to host from remote source.
+            src_user, src_host, src_path = match.captures
+            src_user ||= h.user
+
+            h.remote_exec("scp #{src_user}@#{src_host}:#{src_path} #{h.remote_project_dir}/releases/")
+          else
+            # Upload artifact to host.
+            h.upload(h.artifact, "#{h.remote_project_dir}/releases/")
+          end
+        end
+
+        phase.on_fail do |h|
+          # Remove staged artifact.
+          h.remote_exec("rm -f #{h.remote_project_dir}/releases/#{File.basename(h.artifact)}")
+        end
+      end
+
+      self.add_phase :extract do |phase|
+        phase.on_run do |h|
+          # Make folder for release or bail if it already exists.
+          h.remote_exec("mkdir #{h.release_dir}")
+
+          # Unpack.
+          h.remote_exec("cd #{h.release_dir} && tar -xzf ../#{File.basename(h.artifact)}")
+
+          # Clean up artifact.
+          h.remote_exec("rm -f #{h.remote_project_dir}/releases/#{File.basename(h.artifact)}")
+        end
+
+        phase.on_fail do |h|
+          # Remove release.
+          h.remote_exec("rm -rf #{h.release_dir}")
+        end
+      end
+
+      self.add_phase :link do |phase|
+        phase.on_run do |h|
+          # Symlink new deploy to this release.
+          h.remote_exec("ln -s #{h.release_dir} #{h.deploy_link}")
+        end
+
+        phase.on_fail do |h|
+          # Remove broken deploy.
+          h.remote_exec("rm -f #{h.deploy_link}")
+        end
+      end
+
+      self.add_phase :cleanup do |phase|
+        phase.on_run do |h|
+          if (h.keep)
+            h.cleanup_deploys(h.keep)
+            h.cleanup_releases
+          end
+        end
+      end
+    end
 
     def ssh
       @_conns ||= {}
