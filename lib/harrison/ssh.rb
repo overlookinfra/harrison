@@ -14,6 +14,9 @@ module Harrison
     end
 
     def exec(command)
+      require 'debugger';
+      debugger
+
       puts "[#{desc}] INFO: ssh-exec #{command}" if Harrison::DEBUG
 
       result = invoke(@conn, command)
