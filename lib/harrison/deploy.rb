@@ -212,7 +212,7 @@ module Harrison
 
         phase.on_fail do |h|
           # Remove staged artifact.
-          h.remote_exec("rm -f #{h.remote_project_dir}/releases/#{File.basename(h.artifact)}")
+          #h.remote_exec("rm -f #{h.remote_project_dir}/releases/#{File.basename(h.artifact)}")
         end
       end
 
