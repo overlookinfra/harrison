@@ -209,11 +209,6 @@ module Harrison
             h.upload(h.artifact, "#{h.remote_project_dir}/releases/")
           end
         end
-
-        phase.on_fail do |h|
-          # Remove staged artifact.
-          h.remote_exec("rm -f #{h.remote_project_dir}/releases/#{File.basename(h.artifact)}")
-        end
       end
 
       self.add_phase :extract do |phase|
@@ -227,22 +222,12 @@ module Harrison
           # Clean up artifact.
           h.remote_exec("rm -f #{h.remote_project_dir}/releases/#{File.basename(h.artifact)}")
         end
-
-        phase.on_fail do |h|
-          # Remove release.
-          h.remote_exec("rm -rf #{h.release_dir}")
-        end
       end
 
       self.add_phase :link do |phase|
         phase.on_run do |h|
           # Symlink new deploy to this release.
           h.remote_exec("ln -s #{h.release_dir} #{h.deploy_link}")
-        end
-
-        phase.on_fail do |h|
-          # Remove broken deploy.
-          h.remote_exec("rm -f #{h.deploy_link}")
         end
       end
 
