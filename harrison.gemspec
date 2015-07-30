@@ -27,7 +27,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake"
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "simplecov"
-  spec.add_development_dependency "debugger" if RUBY_VERSION < "2.0.0"
-  spec.add_development_dependency "byebug" if RUBY_VERSION >= "2.0.0"
+  spec.add_development_dependency "pry-debugger" if RUBY_VERSION < "2.0.0"
+  spec.add_development_dependency "pry-byebug" if RUBY_VERSION >= "2.0.0"
   spec.add_development_dependency "sourcify"
 end

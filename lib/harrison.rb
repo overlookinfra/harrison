@@ -7,6 +7,11 @@ require "harrison/package"
 require "harrison/deploy"
 require "harrison/deploy/phase"
 
+begin
+  require "pry"
+rescue LoadError
+end
+
 module Harrison
 
   def self.invoke(args)
