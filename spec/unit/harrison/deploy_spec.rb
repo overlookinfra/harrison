@@ -1,6 +1,11 @@
 require 'spec_helper'
 
 describe Harrison::Deploy do
+  before(:all) do
+    Harrison.class_variable_set(:@@config, Harrison::Config.new)
+    Harrison.config.project = 'test_project'
+  end
+
   let(:instance) do
     Harrison::Deploy.new.tap do |d|
       d.hosts = [ 'hf_host' ]
@@ -71,7 +76,6 @@ describe Harrison::Deploy do
     describe '#remote_exec' do
       before(:each) do
         instance.base_dir = '/opt'
-        instance.project = 'test_project'
 
         @mock_ssh = double(:ssh)
         expect(instance).to receive(:ssh).and_return(@mock_ssh)
@@ -157,7 +161,6 @@ describe Harrison::Deploy do
     describe '#run' do
       before(:each) do
         instance.artifact = 'test_artifact.tar.gz'
-        instance.project = 'test_project'
 
         @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
         allow(instance).to receive(:ssh).and_return(@mock_ssh)
@@ -253,8 +256,6 @@ describe Harrison::Deploy do
       context 'when invoked via rollback' do
         before(:each) do
           instance.rollback = true
-
-          instance.project = 'test_project'
 
           @mock_ssh = double(:ssh, host: 'test_host1', exec: '', upload: true, download: true)
           allow(instance).to receive(:ssh).and_return(@mock_ssh)
@@ -389,7 +390,6 @@ describe Harrison::Deploy do
     describe '#remote_project_dir' do
       it 'should combine base_dir and project name' do
         instance.base_dir = '/test_base_dir'
-        instance.project = 'test_project'
 
         expect(instance.send(:remote_project_dir)).to include('/test_base_dir', 'test_project')
       end
