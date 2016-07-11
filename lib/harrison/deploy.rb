@@ -78,6 +78,11 @@ module Harrison
       # Override Harrisonfile hosts if it was passed on argv.
       self.hosts = @_argv_hosts if @_argv_hosts
 
+      if self.hosts.respond_to?(:call)
+        resolved_hosts = self.hosts.call(self)
+        self.hosts = resolved_hosts
+      end
+
       # Require at least one host.
       if !self.hosts || self.hosts.empty?
         abort("ERROR: You must specify one or more hosts to deploy/rollback on, either in your Harrisonfile or via --hosts.")
