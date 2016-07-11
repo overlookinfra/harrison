@@ -59,7 +59,8 @@ module Harrison
     end
 
     def update_current_symlink
-      @_old_current = self.remote_exec("if [ -L #{current_symlink} ]; then readlink -vn #{current_symlink}; fi")
+      # Conditional assignment here makes this idempotent.
+      @_old_current ||= self.remote_exec("if [ -L #{current_symlink} ]; then readlink -vn #{current_symlink}; fi")
       @_old_current = nil if @_old_current.empty?
 
       # Symlink current to new deploy.
