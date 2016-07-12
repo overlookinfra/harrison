@@ -1,3 +1,5 @@
+require 'highline'
+
 module Harrison
   class Deploy < Base
     attr_accessor :artifact
@@ -17,12 +19,14 @@ module Harrison
       self.class.option_helper(:base_dir)
       self.class.option_helper(:deploy_via)
       self.class.option_helper(:keep)
+      self.class.option_helper(:confirm)
 
       # Command line opts for this action. Will be merged with common opts.
       arg_opts = [
         [ :hosts, "List of remote hosts to deploy to. Can also be specified in Harrisonfile.", :type => :strings ],
         [ :env, "Environment to deploy to. This can be examined in your Harrisonfile to calculate target hosts.", :type => :string ],
         [ :keep, "Number of recent deploys to keep after a successful deploy. (Including the most recent deploy.) Defaults to keeping all deploys forever.", :type => :integer ],
+        [ :confirm, "Whether to interactively confirm the list of target hosts for deployment.", :type => :flag, :default => true ],
       ]
 
       super(arg_opts, opts)
@@ -59,7 +63,8 @@ module Harrison
     end
 
     def update_current_symlink
-      @_old_current = self.remote_exec("if [ -L #{current_symlink} ]; then readlink -vn #{current_symlink}; fi")
+      # Conditional assignment here makes this idempotent.
+      @_old_current ||= self.remote_exec("if [ -L #{current_symlink} ]; then readlink -vn #{current_symlink}; fi")
       @_old_current = nil if @_old_current.empty?
 
       # Symlink current to new deploy.
@@ -77,9 +82,22 @@ module Harrison
       # Override Harrisonfile hosts if it was passed on argv.
       self.hosts = @_argv_hosts if @_argv_hosts
 
+      if self.hosts.respond_to?(:call)
+        resolved_hosts = self.hosts.call(self)
+        self.hosts = resolved_hosts
+      end
+
       # Require at least one host.
       if !self.hosts || self.hosts.empty?
         abort("ERROR: You must specify one or more hosts to deploy/rollback on, either in your Harrisonfile or via --hosts.")
+      end
+
+      if self.confirm
+        self.hosts.each { |h| puts " - #{h}" }
+
+        exit unless HighLine.new.agree("\nProceed with above-listed hosts?")
+
+        puts ""
       end
 
       # Default to just built in deployment phases.

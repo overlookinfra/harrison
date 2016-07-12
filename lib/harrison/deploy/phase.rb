@@ -7,6 +7,10 @@ module Harrison
 
       @conditions = Array.new
 
+      @limit = nil
+      @_run_count = 0
+      @_fail_count = 0
+
       yield self if block_given?
     end
 
@@ -14,7 +18,12 @@ module Harrison
       @conditions << block
     end
 
-    # Ensure all conditions eval to true for this context.
+    # Limit the number of times this phase is invoked per deployment.
+    def set_limit(n)
+      @limit = n
+    end
+
+    # Check if all conditions eval to true for this context.
     def matches_context?(context)
       @conditions.all? { |cblock| cblock.call(context) }
     end
@@ -29,21 +38,30 @@ module Harrison
 
     # These should only be invoked by the deploy action.
     def _run(context)
+      # Ensure limit has not been met.
+      return unless @limit.nil? || @_run_count < @limit
+
+      # Ensure all conditions eval to true for this context.
       return unless matches_context?(context)
 
       if @run_block
         puts "[#{context.host}] Executing \"#{self.name}\"..."
         @run_block.call(context)
+        @_run_count += 1
       end
     end
 
     def _fail(context)
+      # Ensure limit has not been met.
+      return unless @limit.nil? || @_fail_count < @limit
+
       # Ensure all conditions eval to true for this context.
       return unless matches_context?(context)
 
       if @fail_block
         puts "[#{context.host}] Reverting \"#{self.name}\"..."
         @fail_block.call(context)
+        @_fail_count += 1
       end
 
     end

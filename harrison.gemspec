@@ -19,9 +19,10 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = '>= 1.9.3'
 
-  spec.add_runtime_dependency "trollop"
-  spec.add_runtime_dependency "net-ssh"
-  spec.add_runtime_dependency "net-scp"
+  spec.add_runtime_dependency "trollop", "~> 2.1.2"
+  spec.add_runtime_dependency "net-ssh", "~> 2.9.1"
+  spec.add_runtime_dependency "net-scp", "~> 1.2.1"
+  spec.add_runtime_dependency "highline", "~> 1.7.8"
 
   spec.add_development_dependency "bundler", "~> 1.6"
   spec.add_development_dependency "rake"
