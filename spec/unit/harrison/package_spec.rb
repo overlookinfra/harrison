@@ -1,9 +1,13 @@
 require 'spec_helper'
 
 describe Harrison::Package do
+  before(:all) do
+    Harrison.class_variable_set(:@@config, Harrison::Config.new)
+    Harrison.config.project = 'test_project'
+  end
+
   let(:instance) do
     Harrison::Package.new.tap do |p|
-      p.project = 'test_project'
       p.host = 'hf_host'
       p.commit = 'HEAD'
     end
@@ -43,7 +47,6 @@ describe Harrison::Package do
 
       it 'should prepend remote build dir onto passed command' do
         instance.remote_dir = '~/.harrison'
-        instance.project = 'test_project'
 
         expect(@mock_ssh).to receive(:exec).with("cd ~/.harrison/test_project/package && test_command").and_return('')
 
@@ -89,7 +92,6 @@ describe Harrison::Package do
     describe '#remote_project_dir' do
       it 'should combine remote dir and project name' do
         instance.remote_dir = '~/.harrison'
-        instance.project = 'test_project'
 
         expect(instance.send(:remote_project_dir)).to include('~/.harrison', 'test_project')
       end
