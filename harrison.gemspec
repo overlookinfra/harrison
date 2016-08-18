@@ -17,10 +17,10 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = '>= 1.9.3'
+  spec.required_ruby_version = '>= 2.0'
 
   spec.add_runtime_dependency "trollop", "~> 2.1.2"
-  spec.add_runtime_dependency "net-ssh", "~> 2.9.1"
+  spec.add_runtime_dependency "net-ssh", "~> 3.2"
   spec.add_runtime_dependency "net-scp", "~> 1.2.1"
   spec.add_runtime_dependency "highline", "~> 1.7.8"
 
@@ -28,7 +28,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake"
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "simplecov"
-  spec.add_development_dependency "pry-debugger" if RUBY_VERSION < "2.0.0"
-  spec.add_development_dependency "pry-byebug" if RUBY_VERSION >= "2.0.0"
+  spec.add_development_dependency "pry-byebug"
   spec.add_development_dependency "sourcify"
 end
