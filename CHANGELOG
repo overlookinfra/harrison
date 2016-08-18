@@ -1,3 +1,23 @@
+0.5.0
+-------------------
+- BREAKING: Bumped net-ssh to 3.2.x which results in Harrison now
+  requiring Ruby >= 2.0.
+
+0.4.0b1
+-------------------
+- Fixed a bug where config changes inside of one task could leak into
+  other tasks. (#22)
+
+- Added the ability to limit the number of times a given phase will be
+  invoked during a deploy. (E.g. run a task on only the first host
+  deployed to.)
+
+- Added the ability for target hosts to be a Proc so that hosts can be
+  dynamically computed.
+
+- Added the ability to require interactive confirmation of target hosts
+  before proceeding with a deploy.
+
 0.3.0
 -------------------
 - BREAKING: Definition of "deploy" task has significantly changed. Deploys

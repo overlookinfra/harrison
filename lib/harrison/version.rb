@@ -1,3 +1,3 @@
 module Harrison
-  VERSION = "0.4.0.b1"
+  VERSION = "0.5.0"
 end
