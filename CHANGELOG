@@ -1,3 +1,13 @@
+0.6.0
+-------------------
+- Added ability to package from forks. When packaging from HEAD or a branch,
+  harrison will now check to see if that branch is tracking a remote branch.
+  If so, it will attempt to package code from that remote. If the branch
+  being packaged is not tracking a remote branch, or if what is being packaged
+  is not a branch, harrison will look for a remote named "origin" and package
+  from there. Lastly, if there is not a remote named "origin", it will package
+  from the configured "git_src".
+
 0.5.0
 -------------------
 - BREAKING: Bumped net-ssh to 3.2.x which results in Harrison now

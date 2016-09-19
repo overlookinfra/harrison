@@ -119,8 +119,9 @@ Harrison.deploy do |h|
 end
 ```
 
-Next, ensure that your SSH key is authorized to log in as the `user` you have specified in
-the Harrisonfile for each task. (Or be ready to type the password a lot. :weary:)
+Next, ensure that your SSH key is authorized to log in as the `user` you have
+specified in the Harrisonfile for each task. (Or be ready to type the password
+a lot. :weary:)
 
 ### Building a Release
 
@@ -130,18 +131,25 @@ Use the `harrison package` command:
 $ harrison package
 ```
 
-By default this will build and package `HEAD` of your current branch. You may specify another commit to
-build using the `--commit` option:
+By default this will build and package `HEAD` of your current branch. You may
+specify another commit to build using the `--commit` option:
 
 ```
 $ harrison package --commit mybranch
 ```
 
-The `--commit` option understands anything that `git rev-parse` understands. *NOTE: The commit you
-reference must be pushed to the repository referenced as `git_src` in the Harrisonfile before
-you can build it.*
+The `--commit` option understands anything that `git rev-parse` understands.
+*NOTE: The commit you reference must be pushed to a repository accessible by
+your build server before you can build it.*
 
-The packaged release artifact will, by default, be saved into a local 'pkg' subfolder:
+By default, harrison will automatically detect the correct remote repository to
+attempt to package from by first checking to see if the branch being deployed
+is tracking a specific remote and if not, looking for a remote named "origin"
+to package from. If neither of these is available, it will fall back to the
+git\_src configured in your Harrisonfile.
+
+The packaged release artifact will, by default, be saved into a local 'pkg'
+subfolder:
 
 ```
 $ harrison package
@@ -149,8 +157,8 @@ Packaging 5a547d8 for "harrison" on build-server.example.com...
 Sucessfully packaged 5a547d8 to pkg/20140711170226-5a547d8.tar.gz
 ```
 
-You can set the destination on the command line with the `--destination` option, or
-specify a new default in your Harrisonfile:
+You can set the destination on the command line with the `--destination`
+option, or specify a new default in your Harrisonfile:
 
 ```
 h.destination = '/tmp'
@@ -162,16 +170,18 @@ You can also specify a remote destination:
 h.destination = 'jesse@artifact-host.example.com:/tmp/artifacts'
 ```
 
-The username is optional and, if omitted, the build user will be used. *NOTE: Your build server
-must have already accepted the SSH host key of the destination server in order to transfer the
-artifact.*
+The username is optional and, if omitted, the build user will be used. *NOTE:
+Your build server must have already accepted the SSH host key of the
+destination server in order to transfer the artifact.*
 
-There are some additional options available, run `harrison package --help` to see everything available.
+There are some additional options available, run `harrison package --help` to
+see everything available.
 
 
 ### Deploying a Release
 
-Use the `harrison deploy` command passing the artifact to be deployed as an argument:
+Use the `harrison deploy` command passing the artifact to be deployed as an
+argument:
 
 ```
 $ harrison deploy pkg/20140711170226-5a547d8.tar.gz
@@ -183,10 +193,11 @@ You can also deploy from a remote artifact source:
 $ harrison deploy jesse@artifact-host.example.com:/tmp/artifacts/20140711170226-5a547d8.tar.gz
 ```
 
-*NOTE: Each target server must have already accepted the SSH host key of the source server in order to
-transfer the artifact.*
+*NOTE: Each target server must have already accepted the SSH host key of the
+source server in order to transfer the artifact.*
 
-By default, the artifact will be deployed to the list of hosts defined in your Harrisonfile.
+By default, the artifact will be deployed to the list of hosts defined in your
+Harrisonfile.
 
 You can override the target hosts by passing a `--hosts` option:
 
@@ -200,7 +211,8 @@ You can also pass an `--env` option to deploy into multi-stage environments:
 $ harrison deploy pkg/20140711170226-5a547d8.tar.gz --env prod
 ```
 
-This value can then be tested to alter the default target hosts in your Harrisonfile:
+This value can then be tested to alter the default target hosts in your
+Harrisonfile:
 
 ```ruby
 if h.env =~ /prod/
@@ -210,11 +222,42 @@ else
 end
 ```
 
-You can use the `--keep` option (or set it in the deploy section of your Harrisonfile) to specify the total number of
-deploys you want to retain on each server after a successful deployment. The default is to keep all previous deploys
-around indefinitely.
+The hosts option in your Harrisonfile can also be defined as a block of code
+which will be evaluated in order to calculate a list of hosts to deploy to.
+The code block should evaluate to an array of hostnames, for example:
 
-There are some additional options available, run `harrison deploy --help` to see everything available.
+```ruby
+h.hosts = Proc.new do |h; client, response, instances|
+  require 'aws-sdk'
+
+  AWS.config(region: 'us-west-2')
+
+  client = AWS.ec2.client
+
+  response = client.describe_instances(filters: [
+    { name: 'tag:Name', values: ["app-server-*.#{h.env}.example.com"] },
+    { name: 'instance-state-name', values: ['running'] },
+  ])
+
+  instances = response.data[:reservation_set].flat_map do |r|
+    r[:instances_set] && r[:instances_set].collect do |i|
+      name_tag = i[:tag_set].find { |tag| tag[:key] == 'Name' }
+
+      name_tag[:value]
+    end
+  end
+
+  instances
+end
+```
+
+You can use the `--keep` option (or set it in the deploy section of your
+Harrisonfile) to specify the total number of deploys you want to retain on each
+server after a successful deployment. The default is to keep all previous
+deploys around indefinitely.
+
+There are some additional options available, run `harrison deploy --help` to
+see everything available.
 
 
 ## Contributing
