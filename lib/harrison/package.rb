@@ -33,33 +33,54 @@ module Harrison
     def run(&block)
       return super if block_given?
 
+      # Find the URL of the remote in case it differs from git_src.
+      remote_url = find_remote(self.commit)
+
       # Resolve commit ref to an actual short SHA.
       resolve_commit!
 
-      puts "Packaging #{commit} for \"#{project}\" on #{host}..."
+      puts "Packaging #{commit} from #{remote_url} for \"#{project}\" on #{host}..."
 
       # Make sure the folder to save the artifact to locally exists.
       ensure_destination(destination)
 
+      # To avoid collisions, we use a version of the full URL as remote name.
+      remote_cache_name = remote_url.gsub(/[^a-z0-9_]/i, '_')
+
       # Fetch/clone git repo on remote host.
-      remote_exec("if [ -d cached ] ; then cd cached && git fetch origin -p ; else git clone #{git_src} cached ; fi")
+      remote_exec <<~ENDCMD
+        if [ -d cached ]
+        then
+          cd cached
+          if [ -d .git/refs/remotes/#{remote_cache_name} ]
+          then
+            git fetch #{remote_cache_name} -p
+          else
+            git remote add -f #{remote_cache_name} #{remote_url}
+          fi
+        else
+          git clone -o #{remote_cache_name} #{remote_url} cached
+        fi
+      ENDCMD
 
-      # Make a build folder of the target commit.
-      remote_exec("rm -rf #{artifact_name(commit)} && cp -a cached #{artifact_name(commit)}")
+      build_dir = remote_cache_name + '-' + artifact_name(commit)
 
-      # Check out target commit.
-      remote_exec("cd #{artifact_name(commit)} && git reset --hard #{commit} && git clean -f -d")
+      # Clean up any stale build folder of the target remote/commit.
+      remote_exec("rm -rf #{build_dir} && mkdir -p #{build_dir}")
+
+      # Check out target commit into the build_dir.
+      remote_exec("cd cached && GIT_WORK_TREE=../#{build_dir} git checkout --detach -f #{commit} && git checkout -f -") # TODO: When git is upgraded: --ignore-other-worktrees
 
       # Run user supplied build code in the context of the checked out code.
       begin
-        @_remote_context = "#{remote_project_dir}/package/#{artifact_name(commit)}"
+        @_remote_context = "#{remote_project_dir}/package/#{build_dir}"
         super
       ensure
         @_remote_context = nil
       end
 
       # Package build folder into tgz.
-      remote_exec("rm -f #{artifact_name(commit)}.tar.gz && cd #{artifact_name(commit)} && tar #{excludes_for_tar} -czf ../#{artifact_name(commit)}.tar.gz .")
+      remote_exec("rm -f #{artifact_name(commit)}.tar.gz && cd #{build_dir} && tar #{excludes_for_tar} -czf ../#{artifact_name(commit)}.tar.gz .")
 
       if match = remote_regex.match(destination)
         # Copy artifact to remote destination.
@@ -73,7 +94,8 @@ module Harrison
       end
 
       if purge
-        remote_exec("rm -rf #{artifact_name(commit)}")
+        remote_exec("rm -rf #{build_dir}")
+        remote_exec("rm #{artifact_name(commit)}.tar.gz")
       end
 
       puts "Sucessfully packaged #{commit} to #{destination}/#{artifact_name(commit)}.tar.gz"
@@ -83,6 +105,32 @@ module Harrison
 
     def remote_project_dir
       "#{remote_dir}/#{project}"
+    end
+
+    def find_remote(ref)
+      remote = nil
+      remote_url = nil
+
+      catch :failure do
+        # If it's a branch, try to resolve what it's tracking.
+        # This will exit non-zero (and throw :failure) if the ref is
+        # not a branch.
+        remote = exec("git rev-parse --symbolic-full-name #{ref}@{upstream} 2>/dev/null")&.match(/\Arefs\/remotes\/(.+)\/.+\Z/i)&.captures.first
+      end
+
+      # Fallback to 'origin' if not deploying a branch with a tracked
+      # upstream.
+      remote ||= 'origin'
+
+      catch :failure do
+        # Look for a URL for whatever remote we have. git-config exits
+        # non-zero if the requested value doesn't exist.
+        remote_url = exec("git config remote.#{remote}.url 2>/dev/null")
+      end
+
+      # If we found a remote_url, return that, otherwise fall back to
+      # configured git_src.
+      return remote_url || self.git_src
     end
 
     def resolve_commit!

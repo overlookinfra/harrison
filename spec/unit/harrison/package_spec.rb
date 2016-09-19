@@ -4,6 +4,7 @@ describe Harrison::Package do
   before(:all) do
     Harrison.class_variable_set(:@@config, Harrison::Config.new)
     Harrison.config.project = 'test_project'
+    Harrison.config.git_src = 'git_src_from_config'
   end
 
   let(:instance) do
@@ -94,6 +95,49 @@ describe Harrison::Package do
         instance.remote_dir = '~/.harrison'
 
         expect(instance.send(:remote_project_dir)).to include('~/.harrison', 'test_project')
+      end
+    end
+
+    describe '#find_remote' do
+      before(:each) do
+        allow(instance).to receive(:exec).with(/^git config remote.my_remote.url/).and_return('my_remote_url')
+      end
+
+      context 'when deploying a branch that is tracking a remote branch' do
+        before(:each) do
+          allow(instance).to receive(:exec).with(/^git rev-parse/).and_return('refs/remotes/my_remote/branch')
+        end
+
+        it 'should return url for tracked remote' do
+          expect(instance.send(:find_remote, 'HEAD')).to eq 'my_remote_url'
+        end
+      end
+
+      context 'when deploying a tree-ish with no remote tracking' do
+        before(:each) do
+          allow(instance).to receive(:exec).with(/^git rev-parse/).and_throw(:failure)
+        end
+
+        context 'when an \'origin\' remote exists' do
+          before(:each) do
+            allow(instance).to receive(:exec).with(/^git config remote.origin.url/).and_return('origin_url')
+          end
+
+          it 'should return url for origin' do
+            expect(instance.send(:find_remote, 'HEAD')).to eq 'origin_url'
+          end
+        end
+
+        context 'when no \'origin\' remote exists' do
+          before(:each) do
+            allow(instance).to receive(:exec).with(/^git config remote.origin.url/).and_throw(:failure)
+          end
+
+          it 'should return the configured git_src' do
+            # git_src is defined globally at the top of this file
+            expect(instance.send(:find_remote, 'HEAD')).to eq 'git_src_from_config'
+          end
+        end
       end
     end
 
