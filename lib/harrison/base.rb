@@ -6,9 +6,11 @@ module Harrison
     def initialize(arg_opts=[], opts={})
       # Config helpers for Harrisonfile.
       self.class.option_helper(:user)
+      self.class.option_helper(:env)
 
       @arg_opts = arg_opts
       @arg_opts << [ :debug, "Output debug messages.", :type => :boolean, :default => false ]
+      @arg_opts << [ :env, "Environment to package for or deploy to. This can be examined in your Harrisonfile to calculate target hosts.", :type => :string ]
 
       @options = opts
     end

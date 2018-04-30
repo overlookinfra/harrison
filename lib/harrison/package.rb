@@ -39,6 +39,16 @@ module Harrison
       # Resolve commit ref to an actual short SHA.
       resolve_commit!
 
+      if self.host.respond_to?(:call)
+        resolved_host = self.host.call(self)
+        self.host = resolved_host
+      end
+
+      # Require at least one host.
+      if !self.host || self.host.empty?
+        abort("ERROR: Unable to resolve build host.")
+      end
+
       puts "Packaging #{commit} from #{remote_url} for \"#{project}\" on #{host}..."
 
       # Make sure the folder to save the artifact to locally exists.
@@ -69,7 +79,16 @@ module Harrison
       remote_exec("rm -rf #{build_dir} && mkdir -p #{build_dir}")
 
       # Check out target commit into the build_dir.
-      remote_exec("cd cached && GIT_WORK_TREE=../#{build_dir} git checkout --detach -f #{commit} && git checkout -f -") # TODO: When git is upgraded: --ignore-other-worktrees
+      checkout_failure = catch :failure do
+        remote_exec("cd cached && GIT_WORK_TREE=../#{build_dir} git checkout --detach -f #{commit} && git checkout -f -") # TODO: When git is upgraded: --ignore-other-worktrees
+
+        # We want "checkout_failure" to be false if nothing was caught.
+        false
+      end
+
+      if checkout_failure
+        abort("ERROR: Unable to checkout requested git reference '#{commit}' on build server, ensure you have pushed the requested branch or tag to the remote repo.")
+      end
 
       # Run user supplied build code in the context of the checked out code.
       begin

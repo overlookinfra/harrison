@@ -15,7 +15,6 @@ module Harrison
     def initialize(opts={})
       # Config helpers for Harrisonfile.
       self.class.option_helper(:hosts)
-      self.class.option_helper(:env)
       self.class.option_helper(:base_dir)
       self.class.option_helper(:deploy_via)
       self.class.option_helper(:keep)
@@ -24,7 +23,6 @@ module Harrison
       # Command line opts for this action. Will be merged with common opts.
       arg_opts = [
         [ :hosts, "List of remote hosts to deploy to. Can also be specified in Harrisonfile.", :type => :strings ],
-        [ :env, "Environment to deploy to. This can be examined in your Harrisonfile to calculate target hosts.", :type => :string ],
         [ :keep, "Number of recent deploys to keep after a successful deploy. (Including the most recent deploy.) Defaults to keeping all deploys forever.", :type => :integer ],
         [ :confirm, "Whether to interactively confirm the list of target hosts for deployment.", :type => :flag, :default => true ],
       ]
