@@ -1,3 +1,7 @@
+0.7.0
+-------------------
+- Added ability to calculate build host dynamically in package task.
+
 0.6.0
 -------------------
 - Added ability to package from forks. When packaging from HEAD or a branch,
