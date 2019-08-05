@@ -1,3 +1,9 @@
+0.8.0
+-------------------
+- BREAKING: Bumped required Ruby version to >= 2.3.1
+- Bumped net-ssh to 5.2.x
+- Bumped net-scp to 2.0.x
+
 0.7.0
 -------------------
 - Added ability to calculate build host dynamically in package task.
