@@ -2,6 +2,8 @@ module Harrison
   class Package < Base
     def initialize(opts={})
       # Config helpers for Harrisonfile.
+      self.class.option_helper(:via)
+      self.class.option_helper(:dockerfiles)
       self.class.option_helper(:host)
       self.class.option_helper(:commit)
       self.class.option_helper(:purge)
@@ -38,6 +40,8 @@ module Harrison
 
       # Resolve commit ref to an actual short SHA.
       resolve_commit!
+
+      return run_docker if self.via == :docker
 
       if self.host.respond_to?(:call)
         resolved_host = self.host.call(self)
@@ -121,6 +125,130 @@ module Harrison
     end
 
     protected
+
+    def run_docker
+      require 'open3'
+
+      packages = []
+
+      git_worktree_prune_argv = [
+        "git",
+        "worktree",
+        "prune",
+      ].join(' ')
+
+      if Harrison::DEBUG
+        system(git_worktree_prune_argv) || (throw :failure)
+      else
+        _, gwtp_err, gwtp_status = Open3.capture3(git_worktree_prune_argv)
+
+        if gwtp_status != 0
+          puts gwtp_err
+          throw :failure
+        end
+      end
+
+      begin
+        tmp_dir = Dir.mktmpdir("harrison-#{project}", "/tmp")
+        tmp_src_dir = File.join(tmp_dir, 'src')
+
+        git_worktree_add_argv = [
+          "git",
+          "worktree",
+          "add",
+          "--force", # allow new worktree to check out duplicate branch
+          tmp_src_dir,
+          commit,
+        ].join(' ')
+
+        git_worktree_add_env = {
+          "OVERCOMMIT_DISABLE" => "1",
+        }
+
+        if Harrison::DEBUG
+          system(git_worktree_add_env, git_worktree_add_argv) || (throw :failure)
+        else
+          _, gwta_err, gwta_status = Open3.capture3(git_worktree_add_env, git_worktree_add_argv)
+
+          if gwta_status != 0
+            puts gwta_err
+            throw :failure
+          end
+        end
+
+        self.dockerfiles.each do |df|
+          df_basename = File.basename(df, '.Dockerfile')
+          docker_image_tag = "#{project}-harrison-#{df_basename}:latest"
+
+          docker_build_argv = [
+            'docker', 'build',
+            '--file', df,
+            '--tag', docker_image_tag,
+            '.',
+          ].join(' ')
+
+          puts "Running: #{docker_build_argv}"
+
+          if Harrison::DEBUG
+            system(docker_build_argv) || (throw :failure)
+          else
+            _, build_err, build_status = Open3.capture3(docker_build_argv)
+
+            if build_status != 0
+              puts build_err
+              throw :failure
+            end
+          end
+
+          docker_run_argv = [
+            "docker", "run",
+            "--mount", "type=bind,source=#{tmp_src_dir},target=/src,readonly",
+            "--mount", "type=bind,source=\"$(pwd)/pkg\",target=/pkg",
+            docker_image_tag,
+            commit,
+          ].join(' ')
+
+          puts "Running: #{docker_run_argv}"
+
+          if Harrison::DEBUG
+            system(docker_run_argv) || (throw :failure)
+          else
+            pkg_out, pkg_err, pkg_status = Open3.capture3(docker_run_argv)
+
+            if pkg_status != 0
+              puts pkg_err
+              throw :failure
+            end
+            pkg_out_lines = pkg_out.split("\n")
+
+            packages << pkg_out_lines[-1]
+          end
+        end
+
+        git_worktree_remove_argv = [
+          "git",
+          "worktree",
+          "remove",
+          "--force", # don't care if worktree is unclean
+          tmp_src_dir,
+        ].join(' ')
+
+        if Harrison::DEBUG
+          system(git_worktree_remove_argv) || (throw :failure)
+        else
+          _, gwtr_err, gwtr_status = Open3.capture3(git_worktree_remove_argv)
+
+          if gwtr_status != 0
+            puts gwtr_err
+            throw :failure
+          end
+        end
+      ensure
+        FileUtils.rm_rf(tmp_dir, secure: true)
+      end
+
+      puts "\n#{packages.join("\n")}"
+    end
 
     def remote_project_dir
       "#{remote_dir}/#{project}"
