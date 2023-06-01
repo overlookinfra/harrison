@@ -182,6 +182,7 @@ module Harrison
 
           docker_build_argv = [
             'docker', 'build',
+            '--platform', 'linux/amd64',
             '--file', df,
             '--tag', docker_image_tag,
             '.',
@@ -202,6 +203,7 @@ module Harrison
 
           docker_run_argv = [
             "docker", "run",
+            "--platform", "linux/amd64",
             "--mount", "type=bind,source=#{tmp_src_dir},target=/src,readonly",
             "--mount", "type=bind,source=\"$(pwd)/pkg\",target=/pkg",
             docker_image_tag,
