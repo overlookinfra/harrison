@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](http://semver.org).
 
-## [v0.9.4](https://github.com/puppetlabs/harrison/tree/v0.9.4) - 2023-10-19
+## [v0.9.5](https://github.com/puppetlabs/harrison/tree/v0.9.5) - 2023-11-04
+
+[Full Changelog](https://github.com/puppetlabs/harrison/compare/v0.9.4...v0.9.5)
+
+## [v0.9.4](https://github.com/puppetlabs/harrison/tree/v0.9.4) - 2023-10-20
 
 [Full Changelog](https://github.com/puppetlabs/harrison/compare/v0.9.3...v0.9.4)
 
