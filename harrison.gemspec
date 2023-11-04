@@ -20,13 +20,12 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 2.3.1'
 
   spec.add_runtime_dependency "trollop", "~> 2.1.2"
-  spec.add_runtime_dependency "net-ssh", "~> 6.1"
-  spec.add_runtime_dependency "net-scp", "~> 3.0"
+  spec.add_runtime_dependency "net-ssh", "~> 7.0.0"
+  spec.add_runtime_dependency "net-scp", "~> 4.0.0"
   spec.add_runtime_dependency "highline", "~> 2.0.3"
-
   spec.add_development_dependency "bundler", "~> 2.3"
   spec.add_development_dependency "rake"
-  spec.add_development_dependency "rspec", "~> 3.0"
+  spec.add_development_dependency "rspec", "~> 3.12.0"
   spec.add_development_dependency "simplecov"
   spec.add_development_dependency "pry-byebug"
   spec.add_development_dependency "sourcify"
