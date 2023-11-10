@@ -1,5 +1,7 @@
 # Harrison
 
+![GitHub release (with filter)](https://img.shields.io/github/v/release/puppetlabs/harrison)
+
 Simple artifact-based deployment for web applications.
 
 ## Installation
